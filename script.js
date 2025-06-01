@@ -134,7 +134,7 @@ let lastTimestamp = 0
 // criticalErrorOccurred = false
 //fetch sends a get request and returns the response (as a promise)
 fetch('collisions.json')
-//if successful we go to the .then block, so there was a response whatever it is, it can be an error like 404 or anything
+  //if successful we go to the .then block, so there was a response whatever it is, it can be an error like 404 or anything
   .then(response => response.ok ? response.json() : Promise.reject())//now we check if response was ok 200-299 in this case we return response.json() which unmarshalls it if there's an error we create a promise and reject it
   //response was ok now we call response.json() data
   .then(data => {
@@ -194,212 +194,88 @@ function checkAABB(a, b) {
     a.y < b.y + b.height && //a top edge < b bottom edge
     a.y + a.height > b.y //a bottom edge > b top edge
 }
+
 //calculation of enemy hitbox
 function getEnemyHitbox(enemy) {
-  const type = enemy.type
-  const spriteW = type.spriteWidth || 64 // Default if not specified
+  const type = enemy.type //we get the type from the enemy object 
+  const spriteW = type.spriteWidth || 64 //we get the width of the sprite from enemyTypes to place the hitbox relative to it + and add a default if it's not specified
   const spriteH = type.spriteHeight || 64
-  const hbxW = type.hitboxWidth || spriteW * 0.7// Default if not specified
-  const hbxH = type.hitboxHeight || spriteH * 0.9 // Default if not specified
-
-  // Hitbox is typically aligned to the bottom-center of the sprite frame.
-  // hitboxOffsetX is distance from sprite's left edge to hitbox's left edge.
+  //hitbox size
+  const hbxW = type.hitboxWidth || spriteW * 0.7
+  const hbxH = type.hitboxHeight || spriteH * 0.9
+  //hitbox position relative to sprite we'll place it at the center horizontally and at the bottom (enemy's feet) vertically so it's bottom center
   const hitboxOffsetX = (spriteW - hbxW) / 2
-  // hitboxOffsetY is distance from sprite's top edge to hitbox's top edge.
-  const hitboxOffsetY = spriteH - hbxH // Assumes hitbox is at the bottom of the sprite frame
+  const hitboxOffsetY = spriteH - hbxH
 
   return {
-    x: enemy.x + hitboxOffsetX, // World X of hitbox top-left
-    y: enemy.y + hitboxOffsetY, // World Y of hitbox top-left
+    //attributes of hitbox
+    x: enemy.x + hitboxOffsetX,
+    y: enemy.y + hitboxOffsetY,
     width: hbxW,
     height: hbxH,
-    // Store raw offsets and sprite height for easier calculations later
-    rawOffsetX: hitboxOffsetX,
-    rawOffsetY: hitboxOffsetY,
-    spriteHeight: spriteH, // Full height of the sprite
-    spriteWidth: spriteW   // Full width of the sprite
+    OffsetX: hitboxOffsetX,
+    OffsetY: hitboxOffsetY,
+    spriteHeight: spriteH,
+    spriteWidth: spriteW
   }
 }
 
-function resolveEnemyCollisions(enemy) {
-  if (enemy.type.type !== 'walk') return //only walking enemies
-  const hitbox = getEnemyHitbox(enemy)
-  // const prevHitbox = getEnemyHitbox({
-  //   x: enemy.prevX,
-  //   y: enemy.prevY,
-  //   type: enemy.type
-  // })
-
-  //vertical collisions
-  const verticalCheck = checkCollisionDirections(hitbox, 'y')
-  if (verticalCheck.collided) {
-    if (verticalCheck.direction === 'down') {
-      enemy.y = verticalCheck.tileY - enemy.type.hitboxHeight - enemy.type.hitboxOffsetY
-      enemy.velocityY = 0
-      enemy.onGround = true
-    } else if (verticalCheck.direction === 'up') {
-      enemy.y = verticalCheck.tileY + tileSize - enemy.type.hitboxOffsetY
-      enemy.velocityY = 0
-    }
-  }
-
-  //horizontal collisions
-  const horizontalCheck = checkCollisionDirections(hitbox, 'x');
-  if (horizontalCheck.collided) {
-    if (horizontalCheck.direction === 'right') {
-      enemy.x = horizontalCheck.tileX - enemy.type.hitboxWidth - enemy.type.hitboxOffsetX
-      enemy.facingRight = false
-    } else if (horizontalCheck.direction === 'left') {
-      enemy.x = horizontalCheck.tileX + tileSize - enemy.type.hitboxOffsetX
-      enemy.facingRight = true
-    }
-  }
-
-  //ledge detection
-  if (enemy.onGround && enemy.type.moveSpeed > 0) {
-    const checkX = enemy.facingRight ?
-      hitbox.right + 5 :
-      hitbox.left - 5
-    const checkY = hitbox.bottom + 5
-
-    const tile = pixelToTile(checkX, checkY)
-    if (!isSolidTile(tile.x, tile.y)) {
-      enemy.facingRight = !enemy.facingRight
-    }
-  }
-}
-
-function checkCollisionDirections(hitbox, axis) {
-  const results = {
-    collided: false,
-    direction: null,
-    tileX: 0,
-    tileY: 0
-  }
-
-  const startX = Math.floor(hitbox.left / tileSize)
-  const endX = Math.floor(hitbox.right / tileSize)
-  const startY = Math.floor(hitbox.top / tileSize)
-  const endY = Math.floor(hitbox.bottom / tileSize)
-
-  for (let y = startY; y <= endY; y++) {
-    for (let x = startX; x <= endX; x++) {
-      if (!isSolidTile(x, y)) continue;
-
-      const tile = {
-        left: x * tileSize,
-        right: (x + 1) * tileSize,
-        top: y * tileSize,
-        bottom: (y + 1) * tileSize
-      }
-
-      if (checkAABB(hitbox, tile)) {
-        results.collided = true;
-        results.tileX = x * tileSize
-        results.tileY = y * tileSize
-
-        if (axis === 'y') {
-          const overlapY = hitbox.top < tile.top ?
-            tile.top - hitbox.bottom :
-            hitbox.top - tile.bottom
-          results.direction = hitbox.top < tile.top ? 'down' : 'up'
-        } else {
-          const overlapX = hitbox.left < tile.left ?
-            tile.left - hitbox.right :
-            hitbox.left - tile.right
-          results.direction = hitbox.left < tile.left ? 'right' : 'left'
-        }
-        return results;
-      }
-    }
-  }
-  return results
-}
-
+//this checks if a tile is valid (not off map) and if it's a collision tile (all except hazards and doors)
 function isSolidTile(x, y) {
-  if (y >= collisions.length || x >= collisions[y].length) return false
-  const tile = collisions[y][x]
+  if (x < 0 || y < 0 || y >= collisions.length || x >= collisions[y]?.length) //? mean or undefined it avoids returning an error by returning undefined if collisions[y] doesn't exist
+    return false
+  const tile = collisions[y][x] //collision tile's number
   return [1, 2, 3, 7].includes(tile)
 }
-
+//one tile is 16px by 16px this handles the conversion from pixel to tile
+//simple calculation of which tile the pixel is on, returns object {x:tilex, y:tiley}
 function pixelToTile(x, y) {
   return {
-    x: Math.floor(x / tileSize),
+    x: Math.floor(x / tileSize), //tilesize = 16 
     y: Math.floor(y / tileSize)
   }
 }
 
-function updateEnemyLogic(deltaTime) {
-  enemies.forEach(enemy => {
-    enemy.prevX = enemy.x;
-    enemy.prevY = enemy.y;
-
-    // Apply physics to walking enemies
-    if (enemy.type.type === 'walk') {
-      if (!enemy.onGround) {
-        enemy.velocityY += gravity
-        enemy.y += enemy.velocityY
-      }
-
-      enemy.x += enemy.facingRight ?
-        enemy.type.moveSpeed :
-        -enemy.type.moveSpeed
-    }
-
-    // Handle flying enemy movement
-    if (enemy.type.type === 'fly') {
-      enemy.timeAccumulator += deltaTime
-      enemy.y = enemy.originalSpawnY +
-        Math.sin(enemy.timeAccumulator * 0.002) * enemy.flyAmplitude;
-
-      enemy.x += enemy.facingRight ?
-        enemy.type.moveSpeed :
-        -enemy.type.moveSpeed
-    }
-
-    resolveEnemyCollisions(enemy)
-    updateEnemyVisuals(enemy)
-  })
-}
-
-function updateEnemyVisuals(enemy) {
-  const screenY = enemy.y - mapOffsetY
-  enemy.el.style.transform = `
-    translate(${enemy.x}px, ${screenY}px)
-    scaleX(${enemy.facingRight ? 1 : -1})
-    scale(${enemy.type.scale})
-  `
-}
-
-// --- ENEMY FUNCTIONS ---
+//enemy creation ex : createnemy(greenRobot, 50, 100) 
 function createEnemy(typeName, x, y) {
+  //.find takes a callback as argument loops throught the array returns first element 
+  //where applying the function returns true/truthy value or 
+  //if 0 elements it returns undefined
   const enemyData = enemyTypes.find(et => et.name === typeName)
   if (!enemyData) {
-    console.error("Unknown enemy type:", typeName)
+    console.error("404 I guess, enemy type not found", typeName)
     return null
   }
-  const enemyEl = document.createElement('div');
+  const enemyEl = document.createElement('div')
   enemyEl.classList.add('enemy', `enemy-${enemyData.name}`)
   gameContainer.appendChild(enemyEl)
+  //enemy is just the properties associated with the enemy 
   const enemy = {
+    //almost eveything here can will be overwritten later (on spawndata)
+    //enemy el is a reference to the dom element itself, we can update its properties (using transform for instance)
     el: enemyEl,
-    x: x, // World x, top-left of sprite
-    y: y, // World y, top-left of sprite
-    prevX: x, // For collision response logic
-    prevY: y, // For collision response logic
-    type: enemyData,
-    facingRight: Math.random() < 0.5, // Default, can be overridden by spawnData
-    scale: enemyData.scale || 1.0,
-    timeAccumulator: Math.random() * 2000, // For animations or timed behaviors
-
-    // Flying enemy specific properties
+    x: x,
+    y: y,
+    //storing prev x/y allows determening direction of movement (if x > prevx player is moving right)
+    //determening direction is important if you wanna push the player on impact
+    //quick not about this : we already have facing right 
+    //but we wanna separate direction of movement from the direction the enemy's facing 
+    //even if they'll go together most of the times (all of the times so far) 
+    prevX: x,
+    prevY: y,
+    type: enemyData, //enemyTypes object (speed, hitbox, sprite, size etc...)
+    facingRight: false, //if we wanna make it random math.random()<0.5 does the job it returns 1 or 0 so 50/50 chance of true/false
+    scale: enemyData.scale || 0.5,
+    timeAccumulator: Math.random() * 2000, //for the fly animation so that for each flying creature the (wave movement) starts at a random time
+    //properties of flying enemies
     flyAmplitude: 0,
     flyFrequency: 0,
-    originalSpawnY: y, // Base Y for oscillation if flying
 
-    // Walking enemy specific properties
+    originalSpawnY: y,
+
+    //properties od walking enemies 
     velocityY: 0,
-    onGround: false // Will be determined by gravity and collisions
+    onGround: false
   }
 
   if (enemy.type.type === 'fly') {
@@ -411,59 +287,62 @@ function createEnemy(typeName, x, y) {
 
   return enemy
 }
+//for now this only works on walking enemies
 function handleEnemyVerticalCollisions(enemy) {
   if (enemy.type.type !== 'walk' || !collisionsLoaded) return
+  //we'll use getenemyhitbox to get its prevY
+  const enemyHitbox = getEnemyHitbox(enemy)
+  //we'll store enemy Y (top/bottom) before applying velocity
+  //important cause if current y overlaps with a collision tile
+  //we can reset it to prevY note:based on this we'll define a search area (bigger than hitbox)
+  const prevhitboxTopY = enemy.prevY + enemyHitbox.OffsetY;
+  const prevhitboxBottomY = enemy.prevY + enemyHitbox.spriteHeight;
 
-  const enemyHitboxInfo = getEnemyHitbox(enemy) // Hitbox definition based on PREVIOUS enemy.y
-
-  // Store previous Y position of the hitbox's TOP for accurate ceiling collision detection
-  // enemy.prevY is the sprite's top Y. enemyHitboxInfo.rawOffsetY is offset from sprite top to hitbox top.
-  const prevHitboxActualTopY = enemy.prevY + enemyHitboxInfo.rawOffsetY;
-  const prevHitboxActualBottomY = enemy.prevY + enemyHitboxInfo.spriteHeight;
-
-
-  // Apply gravity if not on ground (or to re-check if still on ground)
-  // For walking enemies, they are always subject to gravity unless explicitly on ground.
+  //apply gravity and velocity
   enemy.velocityY += gravity
   enemy.y += enemy.velocityY
-
-  let currentHitbox = getEnemyHitbox(enemy) // Recalculate with new enemy.y
+  //after gravity and velocity we get current properties of enemy
+  let currentHitbox = getEnemyHitbox(enemy)
   let newOnGroundStatus = false
+  //for checking overlap a bit before it happens we use a slightly bigger (search area)
+  //left x
+  const startRow = Math.max(0, Math.floor(currentHitbox.y / tileSize) - 1) //y (row) of current hitbox converted from pixels to tiles by dividing by tilesize = 16 and taking the floor, -1 adds a row to top so on top of the 0 row
+  //right x
+  const endRow = Math.min(collisions.length - 1, Math.floor((currentHitbox.y + currentHitbox.height) / tileSize) + 1) //collisions is a 2D array each the inside arrays are lines so collisions.length-1 is the number of rows (+1row below the last row)
+  //top y
+  const startCol = Math.max(0, Math.floor(currentHitbox.x / tileSize) - 1) //x position of hitbox converted from pixel to tiles (-1row (added on the left))
+  //bottom y
+  const endCol = Math.min((collisions[0]?.length || 0) - 1, Math.floor((currentHitbox.x + currentHitbox.width) / tileSize) + 1)//+1 row added on the right
 
-  // Define search area for collision tiles
-  const startRow = Math.max(0, Math.floor(currentHitbox.y / tileSize) - 1)
-  const endRow = Math.min(collisions.length - 1, Math.floor((currentHitbox.y + currentHitbox.height) / tileSize) + 1)
-  const startCol = Math.max(0, Math.floor(currentHitbox.x / tileSize) - 1)
-  const endCol = Math.min((collisions[0]?.length || 0) - 1, Math.floor((currentHitbox.x + currentHitbox.width) / tileSize) + 1)
-
+  //we'll loop over rows and columns 
   for (let r = startRow; r <= endRow; r++) {
     for (let c = startCol; c <= endCol; c++) {
-      const tileValue = collisions[r]?.[c];
-      // Tiles that block vertical movement: 1 (Ground), 3 (One-way platform - from top), 7 (Two-way platform)
-      if (![1, 3, 7].includes(tileValue)) continue;
 
+      const tileValue = collisions[r]?.[c]
+      // 0 = transparent, 1 = ground, 2 = wall, 3 = one-way, 4 = hazard, 7 = two way, 8 = door
+      if (![1, 3, 7].includes(tileValue)) continue //0, 2, 4 and 8 don't impact vertical movement so we ignore them (we'll handle colliding vertically with walls in another place)
+      //create an object that represents the tile rectangle, we * c and r by 16 to get x and y of tile 
+      //and we know height/width are 16px
       const tileRect = { x: c * tileSize, y: r * tileSize, width: tileSize, height: tileSize }
-
+      //if enemy hitbox overlaps the tile 
       if (checkAABB(currentHitbox, tileRect)) {
-        // --- Landing on a surface (moving down or was on ground) ---
+        //velocityY > 0 means falling and == 0 means idle(stationary)
         if (enemy.velocityY >= 0) {
-          // Condition: Enemy's previous bottom was at or above the tile's top surface.
-          // This ensures we only collide when crossing the boundary downwards.
-          if (prevHitboxActualBottomY <= tileRect.y + 1) { // +1 for small tolerance
-            // Landed on the tile. Align bottom of SPRITE with top of tile.
-            enemy.y = tileRect.y - enemyHitboxInfo.spriteHeight;
-            enemy.velocityY = 0;
-            newOnGroundStatus = true;
-            currentHitbox = getEnemyHitbox(enemy); // Update hitbox after position correction
+          //if previously the enemy was above the tile (so now it should land on it)
+          if (prevhitboxBottomY <= tileRect.y + 1) {
+            enemy.y = tileRect.y - enemyHitbox.spriteHeight
+            enemy.velocityY = 0
+            newOnGroundStatus = true
+            currentHitbox = getEnemyHitbox(enemy) // Update hitbox after position correction
           }
         }
         // --- Hitting a ceiling (moving up) ---
         // One-way platforms (type 3) should not act as ceilings.
         else if (enemy.velocityY < 0 && tileValue !== 3) {
           // Condition: Enemy's previous top was at or below the tile's bottom surface.
-          if (prevHitboxActualTopY >= tileRect.y + tileRect.height - 1) { // -1 for tolerance
+          if (prevhitboxTopY >= tileRect.y + tileRect.height - 1) { // -1 for tolerance
             // Hit a ceiling. Align top of HITBOX with bottom of tile.
-            enemy.y = tileRect.y + tileRect.height - enemyHitboxInfo.rawOffsetY
+            enemy.y = tileRect.y + tileRect.height - enemyHitbox.OffsetY
             enemy.velocityY = 0
             currentHitbox = getEnemyHitbox(enemy) // Update hitbox after position correction
           }
@@ -776,9 +655,9 @@ function gameLoop(timestamp) {
   prevX = playerX
   prevY = playerY
 
-  if (keysPressed['ArrowLeft']) { playerX -= speed; facingRight = false}
-  if (keysPressed['ArrowRight']) { playerX += speed; facingRight = true}
-  if (keysPressed['ArrowUp'] && onGround) { velocityY = jumpStrength; onGround = false}
+  if (keysPressed['ArrowLeft']) { playerX -= speed; facingRight = false }
+  if (keysPressed['ArrowRight']) { playerX += speed; facingRight = true }
+  if (keysPressed['ArrowUp'] && onGround) { velocityY = jumpStrength; onGround = false }
 
   if (!onGround) velocityY += gravity
   playerY += velocityY

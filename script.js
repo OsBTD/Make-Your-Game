@@ -328,23 +328,27 @@ function handleEnemyVerticalCollisions(enemy) {
       if (checkAABB(currentHitbox, tileRect)) {
         //velocityY > 0 means falling and == 0 means idle(stationary)
         if (enemy.velocityY >= 0) {
-          //if previously the enemy was above the tile (so now it should land on it)
+          //if previously the enemy was above the tile (so now he should land on it)
           if (prevhitboxBottomY <= tileRect.y + 1) {
-            enemy.y = tileRect.y - enemyHitbox.spriteHeight
+            enemy.y = tileRect.y - enemyHitbox.spriteHeight //here we take the actual size of the enemy sprite we put the enemy on top of the tile (tilerectY - spritesize)
             enemy.velocityY = 0
             newOnGroundStatus = true
-            currentHitbox = getEnemyHitbox(enemy) // Update hitbox after position correction
+            currentHitbox = getEnemyHitbox(enemy) //hitbox updated properties (after position corrections)
           }
         }
-        // --- Hitting a ceiling (moving up) ---
-        // One-way platforms (type 3) should not act as ceilings.
+        //here we only deal with bottom collisions so we ignore one way platforms(3)
         else if (enemy.velocityY < 0 && tileValue !== 3) {
-          // Condition: Enemy's previous top was at or below the tile's bottom surface.
-          if (prevhitboxTopY >= tileRect.y + tileRect.height - 1) { // -1 for tolerance
-            // Hit a ceiling. Align top of HITBOX with bottom of tile.
+          //we check if enemy's previous y position was below the collision tile 
+          //so enemy should hit head with tile (ceiling)
+          //to do this it's enough to align his head with the ceiling then gravity will do the work
+          //tilerect.y + tilerect.height = bottom Y of tile
+          //this - hitboxoffsetY to get the top Y position of enemy, cause that's the distance between hitbox and actual sprite top 
+          //so we basically move from the bottom of sprite up a little bit 
+          //(distance = hitbox offsetY) so that when we place the image there it aligns well with the collisions tile
+          if (prevhitboxTopY >= tileRect.y + tileRect.height - 1) {
             enemy.y = tileRect.y + tileRect.height - enemyHitbox.OffsetY
             enemy.velocityY = 0
-            currentHitbox = getEnemyHitbox(enemy) // Update hitbox after position correction
+            currentHitbox = getEnemyHitbox(enemy)
           }
         }
       }
@@ -354,159 +358,167 @@ function handleEnemyVerticalCollisions(enemy) {
 }
 
 
-function handleEnemyMovementAndCollisions(enemy, deltaTime) {
+function handleEnemyMovementAndCollisions(enemy) {
+  //horizontal collision are only for enemies that should move,
+  //only when they're on ground,
+  //and for now only for walking ones 
   if (enemy.type.type !== 'walk' || !enemy.onGround || enemy.type.moveSpeed === 0 || !collisionsLoaded) {
-    // Walking enemies only move horizontally if on the ground and have speed.
     return
   }
-
-  enemy.prevX = enemy.x // Store X before this frame's horizontal movement
-
+  //we keep trace of x position before movement
+  enemy.prevX = enemy.x
+  //add direction and movement 
+  //this is speculative meaning it won't actually apply yet, we'll check if it overlaps with a collision tile later
   enemy.x += (enemy.facingRight ? 1 : -1) * enemy.type.moveSpeed
-  let currentHitbox = getEnemyHitbox(enemy) // Hitbox after speculative horizontal move
-
+  //hitbox after (speculative) movement
+  let currentHitbox = getEnemyHitbox(enemy)
+  //to switch directions 
   let turnAround = false
-  const solidTilesForWall = [1, 2] // Ground and Walls act as horizontal barriers
-
-  // 1. Wall/Obstacle Collision Check
-  // Check a point slightly ahead of the hitbox's leading edge, across its height.
+  //tile concerned with horizontal collisions 1:ground and 2:wall
+  const solidTilesForWall = [1, 2]
+  //same thing we did for vertical checks and y 
+  //here in checkPointX we'll check a bit (1px) before x or 1 px after x + hitboxwidth
+  //depending on the direction he's facing right +1 left -1
   const checkPointX = enemy.facingRight ? (currentHitbox.x + currentHitbox.width + 1) : (currentHitbox.x - 1)
+  //determine which tiles (top and bottom) the hitbox is on
   const startRow = Math.floor(currentHitbox.y / tileSize)
-  const endRow = Math.floor((currentHitbox.y + currentHitbox.height - 1) / tileSize) // -1 to stay within hitbox
-
+  const endRow = Math.floor((currentHitbox.y + currentHitbox.height) / tileSize)
+  //then we'll loop over tiles from start to end rows and check for collision tiles 
   for (let r = startRow; r <= endRow; r++) {
-    if (r < 0 || r >= collisions.length) continue
+    if (r < 0 || r >= collisions.length) continue //ignorie out of map's bounds 
+    //we get the checkpoint which is 1 pixel to left+right of hitbox and we convert to tile
+    //c here is a column
     const c = Math.floor(checkPointX / tileSize)
-    if (c < 0 || c >= (collisions[0]?.length || 0)) { // Out of map bounds
-      turnAround = true // Turn if about to walk off map edge
+    //if c is outofbounds of the map, enemy should turn 
+    if (c < 0 || c >= (collisions[0]?.length || 0)) {
+      turnAround = true
       break
     }
+    //collisions[r] is a row in collisions and [c] is a column so collisions[r][c] is the value of the tile
     const tileValue = collisions[r]?.[c]
+    //if collisions[r][c] == 1 || 2 we turn around we've horizontally hit ground or a wall
     if (solidTilesForWall.includes(tileValue)) {
       turnAround = true
       break
     }
   }
-
-  // 2. Ledge Detection (if not already turning due to a wall)
+  //if enemy hasn't had to turnaround yet and is onground
   if (!turnAround && enemy.onGround) {
-    // Check the tile just in front of and below the enemy's leading foot.
-    const footCheckX = currentHitbox.x + (enemy.facingRight ? currentHitbox.width + 2 : -2); // Slightly ahead of hitbox edge
-    const footCheckY = currentHitbox.y + currentHitbox.height + 5; // 5px below the hitbox bottom
-
-    const groundTileCol = Math.floor(footCheckX / tileSize);
-    const groundTileRow = Math.floor(footCheckY / tileSize);
-
-    let groundExistsAhead = false;
+    //search area 2px to left/right and 5px below
+    const footCheckX = currentHitbox.x + (enemy.facingRight ? currentHitbox.width + 2 : -2)
+    const footCheckY = currentHitbox.y + currentHitbox.height + 5
+    //convert to tiles
+    const groundTileCol = Math.floor(footCheckX / tileSize)
+    const groundTileRow = Math.floor(footCheckY / tileSize)
+    let groundExists = false
+    //make sure we're withing map's bounds
     if (groundTileRow >= 0 && groundTileRow < collisions.length &&
       groundTileCol >= 0 && groundTileCol < (collisions[0]?.length || 0)) {
-      const tileBelowFoot = collisions[groundTileRow]?.[groundTileCol];
-      // Tiles considered as walkable ground for ledge detection: 1 (Ground), 3 (One-way), 7 (Two-way)
+      //get value of tile and check if it's 1(ground), 3(1-way platform), 7 (2-way platform)
+      const tileBelowFoot = collisions[groundTileRow]?.[groundTileCol]
       if ([1, 3, 7].includes(tileBelowFoot)) {
-        groundExistsAhead = true;
+        groundExists = true
       }
     }
-    if (!groundExistsAhead) {
-      turnAround = true;
+    //if no ground in search area turn around
+    if (!groundExists) {
+      turnAround = true
     }
   }
-
-  // Apply turn around logic
+  //if enemy should turn around (from colliding with walls, ground, platforms)
+  //we revert to prevX, current x overlays with collision tile
+  //switch facing direction
   if (turnAround) {
-    enemy.x = enemy.prevX; // Revert to X before movement to avoid partially entering wall/ledge
-    enemy.facingRight = !enemy.facingRight;
+    enemy.x = enemy.prevX
+    enemy.facingRight = !enemy.facingRight
   }
 }
 
 function updateEnemyLogic(deltaTime) {
   enemies.forEach(enemy => {
-    // Store previous positions for accurate collision checking within the frame
-    enemy.prevX = enemy.x;
-    enemy.prevY = enemy.y;
+    enemy.prevX = enemy.x
+    enemy.prevY = enemy.y
 
     if (enemy.type.type === 'walk') {
-      handleEnemyVerticalCollisions(enemy); // Handles gravity, landing, ceiling hits
-      handleEnemyMovementAndCollisions(enemy, deltaTime); // Handles horizontal walking, wall/ledge turning
+      handleEnemyVerticalCollisions(enemy)
+      handleEnemyMovementAndCollisions(enemy, deltaTime)
     } else if (enemy.type.type === 'fly') {
-      // Basic flying logic (oscillation)
-      enemy.timeAccumulator += deltaTime;
-      const flyOffset = enemy.flyAmplitude * Math.sin(enemy.timeAccumulator * enemy.flyFrequency);
-      enemy.y = enemy.originalSpawnY + flyOffset; // Oscillate around original spawn Y
+      enemy.timeAccumulator += deltaTime
+      const flyOffset = enemy.flyAmplitude * Math.sin(enemy.timeAccumulator * enemy.flyFrequency)
+      enemy.y = enemy.originalSpawnY + flyOffset
 
-      // Example: Horizontal movement for flying types like 'yellowBee'
-      if (enemy.type.moveSpeed > 0) { // Any flying enemy with moveSpeed > 0
-        enemy.x += (enemy.facingRight ? 1 : -1) * enemy.type.moveSpeed;
-        // Simple boundary check to turn flying enemies at map edges
-        const spriteW = enemy.type.spriteWidth || 64;
-        const mapPixelWidth = (collisions[0]?.length || 0) * tileSize;
+      if (enemy.type.moveSpeed > 0) {
+        enemy.x += (enemy.facingRight ? 1 : -1) * enemy.type.moveSpeed
+        const spriteW = enemy.type.spriteWidth || 64
+        const mapPixelWidth = (collisions[0]?.length || 0) * tileSize
         if (enemy.x < 0) {
-          enemy.x = 0;
-          enemy.facingRight = !enemy.facingRight;
+          enemy.x = 0
+          enemy.facingRight = !enemy.facingRight
         } else if (enemy.x + spriteW > mapPixelWidth) {
-          enemy.x = mapPixelWidth - spriteW;
-          enemy.facingRight = !enemy.facingRight;
+          enemy.x = mapPixelWidth - spriteW
+          enemy.facingRight = !enemy.facingRight
         }
       }
     }
 
-    // Update visual position based on world coordinates and map offset
-    let targetScreenX = enemy.x; // enemy.x is already world coordinate
-    let targetScreenY = enemy.y - mapOffsetY; // Adjust world Y by map offset for screen Y
+    let targetScreenX = enemy.x
+    let targetScreenY = enemy.y - mapOffsetY
 
-    enemy.el.style.transform = `translate(${targetScreenX}px, ${targetScreenY}px) scaleX(${enemy.facingRight ? 1 : -1}) scale(${enemy.scale})`;
-  });
+    enemy.el.style.transform = `translate(${targetScreenX}px, ${targetScreenY}px) scaleX(${enemy.facingRight ? 1 : -1}) scale(${enemy.scale})`
+  })
 }
-// --- COLLISION HANDLING (Player) ---
+
+//player's collisions 
 function handleVerticalCollisions() {
-  const playerWorldY = playerY + mapOffsetY;
+  const playerWorldY = playerY + mapOffsetY
   const rect = {
     x: playerX + hitboxOffsetX,
     y: playerWorldY + hitboxOffsetY,
     width: hitboxWidth,
     height: hitboxHeight
   };
-  let newOnGround = false;
-  let playerIsCurrentlyOnDoor = false;
+  let newOnGround = false
+  let playerIsCurrentlyOnDoor = false
 
-  const startRow = Math.max(0, Math.floor(rect.y / tileSize) - 1);
-  const endRow = Math.min(collisions.length - 1, Math.floor((rect.y + rect.height) / tileSize) + 1);
-  const startCol = Math.max(0, Math.floor(rect.x / tileSize) - 1);
-  const endCol = Math.min(collisions[0]?.length - 1, Math.floor((rect.x + rect.width) / tileSize) + 1);
+  const startRow = Math.max(0, Math.floor(rect.y / tileSize) - 1)
+  const endRow = Math.min(collisions.length - 1, Math.floor((rect.y + rect.height) / tileSize) + 1)
+  const startCol = Math.max(0, Math.floor(rect.x / tileSize) - 1)
+  const endCol = Math.min(collisions[0]?.length - 1, Math.floor((rect.x + rect.width) / tileSize) + 1)
 
   for (let r = startRow; r <= endRow; r++) {
     for (let c = startCol; c <= endCol; c++) {
-      const v = collisions[r]?.[c];
-      if (!v) continue;
-      const tile = { x: c * tileSize, y: r * tileSize, width: tileSize, height: tileSize };
+      const v = collisions[r]?.[c]
+      if (!v) continue
+      const tile = { x: c * tileSize, y: r * tileSize, width: tileSize, height: tileSize }
 
       if (checkAABB(rect, tile)) {
         if (v === 8) {
-          playerIsCurrentlyOnDoor = true;
+          playerIsCurrentlyOnDoor = true
           if (!justTransitioned) {
-            transitionToNextStage();
+            transitionToNextStage()
             return;
           }
         } else if ([1, 2, 7].includes(v)) {
-          const prevPlayerWorldY = prevY + mapOffsetY;
+          const prevPlayerWorldY = prevY + mapOffsetY
           if (velocityY >= 0 && prevPlayerWorldY + hitboxOffsetY + hitboxHeight <= tile.y + 0.5) {
-            playerY = tile.y - hitboxHeight - hitboxOffsetY - mapOffsetY;
-            velocityY = 0;
-            newOnGround = true;
+            playerY = tile.y - hitboxHeight - hitboxOffsetY - mapOffsetY
+            velocityY = 0
+            newOnGround = true
           } else if (velocityY < 0 && prevPlayerWorldY + hitboxOffsetY >= tile.y + tile.height - 0.5) {
-            playerY = tile.y + tile.height - hitboxOffsetY - mapOffsetY;
-            velocityY = 0;
+            playerY = tile.y + tile.height - hitboxOffsetY - mapOffsetY
+            velocityY = 0
           }
         } else if (v === 3 && velocityY >= 0 && (prevY + mapOffsetY + hitboxOffsetY + hitboxHeight) <= tile.y + 0.5) {
-          playerY = tile.y - hitboxHeight - hitboxOffsetY - mapOffsetY;
-          velocityY = 0;
-          newOnGround = true;
+          playerY = tile.y - hitboxHeight - hitboxOffsetY - mapOffsetY
+          velocityY = 0
+          newOnGround = true
         }
       }
     }
   }
-  onGround = newOnGround;
+  onGround = newOnGround
   if (!playerIsCurrentlyOnDoor && justTransitioned) {
-    justTransitioned = false;
+    justTransitioned = false
   }
 }
 
@@ -517,31 +529,38 @@ function handleHorizontalCollisions() {
     y: playerWorldY + hitboxOffsetY,
     width: hitboxWidth,
     height: hitboxHeight
-  };
-  const startRow = Math.max(0, Math.floor(rect.y / tileSize) - 1);
-  const endRow = Math.min(collisions.length - 1, Math.floor((rect.y + rect.height) / tileSize) + 1);
-  const startCol = Math.max(0, Math.floor(rect.x / tileSize) - 1);
-  const endCol = Math.min(collisions[0]?.length - 1, Math.floor((rect.x + rect.width) / tileSize) + 1);
+  }
+  const startRow = Math.max(0, Math.floor(rect.y / tileSize) - 1)
+  const endRow = Math.min(collisions.length - 1, Math.floor((rect.y + rect.height) / tileSize) + 1)
+  const startCol = Math.max(0, Math.floor(rect.x / tileSize) - 1)
+  const endCol = Math.min(collisions[0]?.length - 1, Math.floor((rect.x + rect.width) / tileSize) + 1)
 
   for (let r = startRow; r <= endRow; r++) {
     for (let c = startCol; c <= endCol; c++) {
       if (collisions[r]?.[c] === 2) {
-        const tile = { x: c * tileSize, y: r * tileSize, width: tileSize, height: tileSize };
+        const tile = { x: c * tileSize, y: r * tileSize, width: tileSize, height: tileSize }
         if (checkAABB(rect, tile)) {
           if (playerX > prevX && prevX + hitboxOffsetX + hitboxWidth <= tile.x + 0.5) {
-            playerX = tile.x - hitboxWidth - hitboxOffsetX;
+            playerX = tile.x - hitboxWidth - hitboxOffsetX
           } else if (playerX < prevX && prevX + hitboxOffsetX >= tile.x + tile.width - 0.5) {
-            playerX = tile.x + tile.width - hitboxOffsetX;
+            playerX = tile.x + tile.width - hitboxOffsetX
           }
         }
       }
     }
   }
 }
+function updatePlayerState() {
+  const isMovingHorizontally = keysPressed['ArrowLeft'] || keysPressed['ArrowRight']
+  if (velocityY < -1) setPlayerState('jump')
+  else if (velocityY > 2 && !onGround) setPlayerState('fall')
+  else if (isMovingHorizontally && onGround) setPlayerState('run')
+  else if (onGround) setPlayerState('idle2')
+}
 
 function transitionToNextStage() {
   if (currentStage < stageStarts.length - 1) {
-    removeEnemiesForStage(currentStage); // Remove enemies from current stage
+    removeEnemiesForStage(currentStage)
 
     currentStage++
     mapOffsetY = 576 * currentStage
@@ -552,18 +571,10 @@ function transitionToNextStage() {
     mapEl.style.transform = `translateY(${-mapOffsetY}px)`
     justTransitioned = true
 
-    spawnEnemiesForStage(currentStage) // Spawn enemies for new stage
+    spawnEnemiesForStage(currentStage)
 
     console.log(`Transitioned to stage ${currentStage}, mapOffsetY: ${mapOffsetY}`)
   }
-}
-
-function updatePlayerState() {
-  const isMovingHorizontally = keysPressed['ArrowLeft'] || keysPressed['ArrowRight']
-  if (velocityY < -1) setPlayerState('jump')
-  else if (velocityY > 2 && !onGround) setPlayerState('fall')
-  else if (isMovingHorizontally && onGround) setPlayerState('run')
-  else if (onGround) setPlayerState('idle2')
 }
 
 const enemySpawnData = {
@@ -601,7 +612,6 @@ const enemySpawnData = {
     { type: 'greenSnail', x: 1000, y: 1928, triggerX: 950, active: false },
   ]
 }
-// --- ENEMY SPAWNING BY STAGE ---
 function spawnEnemiesForStage(stage) {
   const stageSpawns = enemySpawnData[stage]
   if (!stageSpawns) return
@@ -612,7 +622,7 @@ function spawnEnemiesForStage(stage) {
       if (spawnData.facingLeft !== undefined) {
         enemy.facingRight = !spawnData.facingLeft
       }
-      enemy.stage = stage // Track which stage this enemy belongs to
+      enemy.stage = stage
       enemies.push(enemy)
       spawnData.active = true
       spawnData.enemyRef = enemy
@@ -627,22 +637,21 @@ function removeEnemiesForStage(stage) {
       if (enemy.el && enemy.el.parentNode) {
         enemy.el.parentNode.removeChild(enemy.el)
       }
-      return false // Remove from array
+      return false
     }
-    return true // Keep in array
+    return true
   })
 
   const stageSpawns = enemySpawnData[stage]
   if (stageSpawns) {
     stageSpawns.forEach(spawnData => {
-      spawnData.active = false;
-      spawnData.enemyRef = null;
-    });
+      spawnData.active = false
+      spawnData.enemyRef = null
+    })
   }
-  console.log(`Removed all enemies from stage ${stage}`);
+  console.log(`Removed all enemies from stage ${stage}`)
 }
 
-// --- GAME LOOP ---
 function gameLoop(timestamp) {
   if (!collisionsLoaded) {
     requestAnimationFrame(gameLoop)

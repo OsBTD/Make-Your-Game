@@ -152,7 +152,7 @@ fetch('collisions.json')
     collisionsLoaded = true
     mapEl.style.height = (4 * 576) + 'px'
     spawnEnemiesForStage(currentStage)
-    // criticalErrorOccurred = true
+    //criticalErrorOccurred = true
   })
 //event listeners for keys pressed down and released e is a keyboad event and e.key is a string ("arrowleft" / "arrowright" etc...)
 document.addEventListener('keydown', e => keysPressed[e.key] = true)
@@ -433,42 +433,65 @@ function handleEnemyMovementAndCollisions(enemy) {
     enemy.facingRight = !enemy.facingRight
   }
 }
-
+//update state of enemies (in each frame (will be used in gameloop))
+//the two previous functions for handeling enemy collisions are included
+//deltatime is the time passed since the last frame
 function updateEnemyLogic(deltaTime) {
+  //enemies contains active enemies on the stage we're on
   enemies.forEach(enemy => {
+    //as usual before changing anything we save x/y in prevX and prevY
+    //since this we'll execute with requestanimationframe(), 
+    //these values are x and y of the last frame 
     enemy.prevX = enemy.x
     enemy.prevY = enemy.y
-
+    //collisions and movement of walking types
     if (enemy.type.type === 'walk') {
+      //gravity, landing on ground/platforms, ceilings
       handleEnemyVerticalCollisions(enemy)
-      handleEnemyMovementAndCollisions(enemy, deltaTime)
+      //horizontal movement, detection of ground ahead, turning
+      handleEnemyMovementAndCollisions(enemy)
+
+      //movement of flying types
     } else if (enemy.type.type === 'fly') {
+      //timeaccumulator starts as a random number for each flying enemies (in createEnemy)
+      //this makes sure the oscillation starts at a different point for each one
+      //incrementing it by deltatime (time since last frame) makes the osciallation frame-rate independent   
       enemy.timeAccumulator += deltaTime
+      //vertical movement
       const flyOffset = enemy.flyAmplitude * Math.sin(enemy.timeAccumulator * enemy.flyFrequency)
       enemy.y = enemy.originalSpawnY + flyOffset
 
       if (enemy.type.moveSpeed > 0) {
+        //horizontal movement
         enemy.x += (enemy.facingRight ? 1 : -1) * enemy.type.moveSpeed
+        //boundry checks 
         const spriteW = enemy.type.spriteWidth || 64
+        //width of the map converted to pixels (number of columns)
         const mapPixelWidth = (collisions[0]?.length || 0) * tileSize
+        //we check if enemy goes beyond the edges of the map
+        //if so we reset the position and turnaround
+
+        //left edge
         if (enemy.x < 0) {
           enemy.x = 0
           enemy.facingRight = !enemy.facingRight
+          //right edge
         } else if (enemy.x + spriteW > mapPixelWidth) {
           enemy.x = mapPixelWidth - spriteW
           enemy.facingRight = !enemy.facingRight
         }
       }
     }
-
+    //these would be benificial in scrolling 
+    //for now there's no horizontal scrolling 
+    //that's why there's no mapoffsetX (for now*)
     let targetScreenX = enemy.x
     let targetScreenY = enemy.y - mapOffsetY
-
+    //apply the css transform and update position : (x, y, scaleX(facingRight), scale())
     enemy.el.style.transform = `translate(${targetScreenX}px, ${targetScreenY}px) scaleX(${enemy.facingRight ? 1 : -1}) scale(${enemy.scale})`
   })
 }
 
-//player's collisions 
 function handleVerticalCollisions() {
   const playerWorldY = playerY + mapOffsetY
   const rect = {
@@ -676,8 +699,8 @@ function gameLoop(timestamp) {
   updatePlayerState()
   updateEnemyLogic(deltaTime)
 
-  const desiredscale = 0.6
-  player.style.transform = `translate(${playerX}px, ${playerY}px) scaleX(${facingRight ? 1 : -1}) scale(${desiredscale})`
+  const playerSize = 0.6
+  player.style.transform = `translate(${playerX}px, ${playerY}px) scaleX(${facingRight ? 1 : -1}) scale(${playerSize})`
 
   requestAnimationFrame(gameLoop)
 }

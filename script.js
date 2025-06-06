@@ -323,7 +323,12 @@ function handleEnemyVerticalCollisions(enemy) {
       if (![1, 3, 7].includes(tileValue)) continue //0, 2, 4 and 8 don't impact vertical movement so we ignore them (we'll handle colliding vertically with walls in another place)
       //create an object that represents the tile rectangle, we * c and r by 16 to get x and y of tile 
       //and we know height/width are 16px
-      const tileRect = { x: c * tileSize, y: r * tileSize, width: tileSize, height: tileSize }
+      const tileRect = {
+        x: c * tileSize,
+        y: r * tileSize,
+        width: tileSize,
+        height: tileSize
+      }
       //if enemy hitbox overlaps the tile 
       if (checkAABB(currentHitbox, tileRect)) {
         //velocityY > 0 means falling and == 0 means idle(stationary)
@@ -369,13 +374,19 @@ function handleEnemyMovementAndCollisions(enemy) {
   enemy.prevX = enemy.x
   //add direction and movement 
   //this is speculative meaning it won't actually apply yet, we'll check if it overlaps with a collision tile later
-  enemy.x += (enemy.facingRight ? 1 : -1) * enemy.type.moveSpeed
+  if (enemy.type !== 'greenRobot') {
+    enemy.x += (enemy.facingRight ? 1 : -1) * enemy.type.moveSpeed
+
+  } else {
+    enemy.x += (enemy.facingRight ? 1 : -1) * enemy.type.moveSpeed
+
+  }
   //hitbox after (speculative) movement
   let currentHitbox = getEnemyHitbox(enemy)
   //to switch directions 
   let turnAround = false
   //tile concerned with horizontal collisions 1:ground and 2:wall
-  const solidTilesForWall = [1, 2]
+  const solidTilesForWall = [2]
   //same thing we did for vertical checks and y 
   //here in checkPointX we'll check a bit (1px) before x or 1 px after x + hitboxwidth
   //depending on the direction he's facing right +1 left -1
@@ -482,27 +493,40 @@ function updateEnemyLogic(deltaTime) {
         }
       }
     }
+    //on the enemies spritesheet all exceot greenSnail face left by default so right should flip them
+    let finalScaleX = enemy.facingRight ? 1 : -1;
+    if (enemy.type.name !== 'greenSnail') {
+      finalScaleX *= -1
+    }
+
     //these would be benificial in scrolling 
     //for now there's no horizontal scrolling 
     //that's why there's no mapoffsetX (for now*)
     let targetScreenX = enemy.x
     let targetScreenY = enemy.y - mapOffsetY
     //apply the css transform and update position : (x, y, scaleX(facingRight), scale())
-    enemy.el.style.transform = `translate(${targetScreenX}px, ${targetScreenY}px) scaleX(${enemy.facingRight ? 1 : -1}) scale(${enemy.scale})`
+    enemy.el.style.transform = `translate(${targetScreenX}px, ${targetScreenY}px) scaleX(${finalScaleX}) scale(${enemy.scale})`
   })
 }
 
+//Player collisions
+//starting with landing on ground/platforms, ceilings, doors
 function handleVerticalCollisions() {
+  //player's Y position (relative to viewport)
+  //mapoffset Y is the amount the map scrolled vertically with
   const playerWorldY = playerY + mapOffsetY
+  //hitbox x,y, height,width
   const rect = {
     x: playerX + hitboxOffsetX,
     y: playerWorldY + hitboxOffsetY,
     width: hitboxWidth,
     height: hitboxHeight
-  };
+  }
   let newOnGround = false
   let playerIsCurrentlyOnDoor = false
 
+  //define search area (+1 tile (16px) to left,right,top,bottom) 
+  //max min here is just a way to avoid going out of bounds
   const startRow = Math.max(0, Math.floor(rect.y / tileSize) - 1)
   const endRow = Math.min(collisions.length - 1, Math.floor((rect.y + rect.height) / tileSize) + 1)
   const startCol = Math.max(0, Math.floor(rect.x / tileSize) - 1)
@@ -511,26 +535,51 @@ function handleVerticalCollisions() {
   for (let r = startRow; r <= endRow; r++) {
     for (let c = startCol; c <= endCol; c++) {
       const v = collisions[r]?.[c]
+      //we skip if v is any falsy value like undefined (including 0 which means empty pixel no collisions)
       if (!v) continue
-      const tile = { x: c * tileSize, y: r * tileSize, width: tileSize, height: tileSize }
-
+      //we get the value of tile in pixels
+      const tile = {
+        x: c * tileSize,
+        y: r * tileSize,
+        width: tileSize,
+        height: tileSize
+      }
+      //if player's hitbox overlaps with the tile 
       if (checkAABB(rect, tile)) {
+        //8 = door
         if (v === 8) {
           playerIsCurrentlyOnDoor = true
+          //we debounce stage transitioning
+          //the boolean is set to true when we first transition
+          //it resets when player is no longer colliding with door
+          //this prevents some bugs with stage transitions (skipping stages)
           if (!justTransitioned) {
             transitionToNextStage()
-            return;
+            return
           }
+          //1:ground 2:wall 3:two-way platform 
+          //here's we'll handle landing and ceiling
         } else if ([1, 2, 7].includes(v)) {
+          //save player's y before changes
           const prevPlayerWorldY = prevY + mapOffsetY
+          //if falling (<0) or onground (0) 
+          //current bottom y position is just rect.y + rect.height 
+          //instead we get previous bottom y with prevPlayerWorldY + hitboxOffsetY + hitboxHeight
+          //we check if it was above or at the same level as the tile 
+          //(we can add some tolerance too)
           if (velocityY >= 0 && prevPlayerWorldY + hitboxOffsetY + hitboxHeight <= tile.y + 0.5) {
+            //adjust player's y position make him land on top of tile
+            //set velocity to 0 and onground to true
             playerY = tile.y - hitboxHeight - hitboxOffsetY - mapOffsetY
             velocityY = 0
             newOnGround = true
+            //if player was jumping and was previously below tile or at the same level
           } else if (velocityY < 0 && prevPlayerWorldY + hitboxOffsetY >= tile.y + tile.height - 0.5) {
             playerY = tile.y + tile.height - hitboxOffsetY - mapOffsetY
             velocityY = 0
           }
+          //for one-way platforms we only handle landing 
+          //no bottom collisions
         } else if (v === 3 && velocityY >= 0 && (prevY + mapOffsetY + hitboxOffsetY + hitboxHeight) <= tile.y + 0.5) {
           playerY = tile.y - hitboxHeight - hitboxOffsetY - mapOffsetY
           velocityY = 0
@@ -539,14 +588,17 @@ function handleVerticalCollisions() {
       }
     }
   }
+  //set global onground with local one after all the checks
   onGround = newOnGround
+  //reset justtransitioned to false
   if (!playerIsCurrentlyOnDoor && justTransitioned) {
     justTransitioned = false
   }
 }
 
 function handleHorizontalCollisions() {
-  const playerWorldY = playerY + mapOffsetY;
+  //set player's y, define hitbox and search area
+  const playerWorldY = playerY + mapOffsetY
   const rect = {
     x: playerX + hitboxOffsetX,
     y: playerWorldY + hitboxOffsetY,
@@ -560,12 +612,24 @@ function handleHorizontalCollisions() {
 
   for (let r = startRow; r <= endRow; r++) {
     for (let c = startCol; c <= endCol; c++) {
+      //if tile is a wall 
       if (collisions[r]?.[c] === 2) {
-        const tile = { x: c * tileSize, y: r * tileSize, width: tileSize, height: tileSize }
+        //get x,y,height,weight of tile
+        const tile = {
+          x: c * tileSize,
+          y: r * tileSize,
+          width: tileSize,
+          height: tileSize
+        }
+        //if hitbox and wall tile collide
         if (checkAABB(rect, tile)) {
+          //if moving towards the right + right edge is to the left of tile or at same level + tolerance
           if (playerX > prevX && prevX + hitboxOffsetX + hitboxWidth <= tile.x + 0.5) {
+            //position player to left of wall
             playerX = tile.x - hitboxWidth - hitboxOffsetX
+            //if moving towards the left + left edge is to the right of tile or at same level + tolerance
           } else if (playerX < prevX && prevX + hitboxOffsetX >= tile.x + tile.width - 0.5) {
+            //position player to right of wall
             playerX = tile.x + tile.width - hitboxOffsetX
           }
         }
@@ -573,66 +637,87 @@ function handleHorizontalCollisions() {
     }
   }
 }
+
 function updatePlayerState() {
   const isMovingHorizontally = keysPressed['ArrowLeft'] || keysPressed['ArrowRight']
-  if (velocityY < -1) setPlayerState('jump')
-  else if (velocityY > 2 && !onGround) setPlayerState('fall')
+  //this checks for jumping -1 instead of 0 
+  //setplayerstate will create a class under player with classlist.add name it to "state"
+  //it'll also remove the old state
+  if (velocityY < 0) setPlayerState('jump')
+  else if (velocityY > 0 && !onGround) setPlayerState('fall')
   else if (isMovingHorizontally && onGround) setPlayerState('run')
   else if (onGround) setPlayerState('idle2')
 }
 
 function transitionToNextStage() {
+  //if we're not yet at last stage
   if (currentStage < stageStarts.length - 1) {
+    //remove all enemies
     removeEnemiesForStage(currentStage)
 
     currentStage++
+    //all stages are 576px in height
     mapOffsetY = 576 * currentStage
+    //we'll set player's x and y from stageStarts
+    //which determines where should player appear at each stage
+    //with y we take the offset into consideration
     playerX = stageStarts[currentStage].x
     playerY = stageStarts[currentStage].y - mapOffsetY
+    //reset velocity and onground
+    //apply offsetY to the map (shift upwards by 576*stage)
     velocityY = 0
     onGround = false
+    //we use css's transform : translate(mapoffsetY) to set the stages y position
     mapEl.style.transform = `translateY(${-mapOffsetY}px)`
+    //set this to true to make sure it only happens once
+    //until player is no longer colliding with door
     justTransitioned = true
-
+    //spawn new enemies 
     spawnEnemiesForStage(currentStage)
 
     console.log(`Transitioned to stage ${currentStage}, mapOffsetY: ${mapOffsetY}`)
+
+    //here we should transition to an end screen or something 
+    //still dunno what to do here 
+  } else if (currentStage == stageStarts.length - 1) {
+    removeEnemiesForStage(currentStage)
+    justTransitioned = true
   }
 }
-
+//data for spawning enemies for each stage
 const enemySpawnData = {
   0: [
-    { type: 'blueBall', x: 150, y: 130, triggerX: 100, active: false },
-    { type: 'greenRobot', x: 100, y: 205, triggerX: 180, active: false },
-    { type: 'robotBall', x: 350, y: 200, triggerX: 300, active: false },
-    { type: 'greenSnail', x: 480, y: 200, triggerX: 430, active: false, facingLeft: true },
-    { type: 'yellowBee', x: 600, y: 150, triggerX: 550, active: false },
-    { type: 'bigRobot', x: 1000, y: 1352, active: false, facingLeft: true }
+    { type: 'blueBall', x: 1000, y: 1, active: false, facingLeft: true },
+    { type: 'blueBall', x: 1300, y: 3, active: false, facingLeft: true },
 
+    { type: 'greenRobot', x: 730, y: 130, active: false, facingLeft: false },
 
+    { type: 'greenSnail', x: 400, y: 100, active: false, facingLeft: true },
+    { type: 'yellowBee', x: 2000, y: 30, active: false, facingLeft: true },
+
+    { type: 'yellowBee', x: 800, y: 30, active: false, facingLeft: true }
   ],
   1: [
-    { type: 'greenRobot', x: 120, y: 776, triggerX: 80, active: false },
-    { type: 'blueBall', x: 280, y: 700, triggerX: 230, active: false },
-    { type: 'yellowBee', x: 450, y: 720, triggerX: 400, active: false },
-    { type: 'robotBall', x: 650, y: 776, triggerX: 600, active: false },
-    { type: 'greenSnail', x: 850, y: 776, triggerX: 800, active: false },
+    { type: 'greenRobot', x: 100, y: 776, active: false, facingLeft: true },
+    { type: 'blueBall', x: 280, y: 700, active: false, facingLeft: true },
+    { type: 'yellowBee', x: 450, y: 720, active: false, facingLeft: true },
+    { type: 'robotBall', x: 650, y: 776, active: false, facingLeft: true },
+    { type: 'greenSnail', x: 850, y: 776, active: false, facingLeft: true },
   ],
   2: [
-    { type: 'yellowBee', x: 150, y: 1300, triggerX: 100, active: false },
-    { type: 'robotBall', x: 300, y: 1352, triggerX: 250, active: false },
-    { type: 'greenRobot', x: 500, y: 1352, triggerX: 450, active: false },
-    { type: 'blueBall', x: 700, y: 1280, triggerX: 650, active: false },
-    { type: 'greenSnail', x: 900, y: 1352, triggerX: 850, active: false },
+    { type: 'yellowBee', x: 150, y: 1300, active: false, facingLeft: true },
+    { type: 'greenRobot', x: 500, y: 1352, active: false, facingLeft: true },
+    { type: 'blueBall', x: 700, y: 1280, active: false, facingLeft: true },
+    { type: 'greenSnail', x: 900, y: 1352, active: false, facingLeft: true },
     { type: 'bigRobot', x: 1000, y: 1352, active: false, facingLeft: true }
 
   ],
   3: [
-    { type: 'greenRobot', x: 200, y: 1928, triggerX: 150, active: false },
-    { type: 'blueBall', x: 400, y: 1850, triggerX: 350, active: false },
-    { type: 'yellowBee', x: 600, y: 1880, triggerX: 550, active: false },
-    { type: 'robotBall', x: 800, y: 1928, triggerX: 750, active: false },
-    { type: 'greenSnail', x: 1000, y: 1928, triggerX: 950, active: false },
+    { type: 'greenRobot', x: 200, y: 1928, active: false, facingLeft: true },
+    { type: 'blueBall', x: 400, y: 1850, active: false, facingLeft: true },
+    { type: 'yellowBee', x: 600, y: 1880, active: false, facingLeft: true },
+    { type: 'robotBall', x: 800, y: 1928, active: false, facingLeft: true },
+    { type: 'greenSnail', x: 1000, y: 1928, active: false, facingLeft: true },
   ]
 }
 function spawnEnemiesForStage(stage) {

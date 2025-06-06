@@ -10,6 +10,7 @@ function setPlayerState(newState) {
   //here we'll add a class, classList allows managing an element's class content, add just adds a class which would be under player and is a state (idle, run, jump...)
   player.classList.add(playerState)
 }
+
 //background full map 4 stages
 const mapEl = document.querySelector('.map')
 //game viewport, 1 stage at a time 
@@ -55,6 +56,40 @@ const stageStarts = [
   { x: 150, y: 200 + 576 * 2 },
   { x: 200, y: 200 + 576 * 3 }
 ]
+//player attack and damage 
+let isAttacking = false
+let isHit = false
+let isInvincible = false
+const playerMaxHealth = 100
+let playerHealth = playerMaxHealth
+let playerHearts = 3
+//health bar, lives
+const healthBar = document.createElement('div')
+healthBar.className = 'health-bar'
+const healthFill = document.createElement('div')
+healthFill.className = 'health-fill'
+healthBar.appendChild(healthFill)
+gameContainer.appendChild(healthBar)
+
+const heartsContainer = document.createElement('div')
+heartsContainer.className = 'hearts'
+for (let i = 0; i < 3; i++) {
+  const heart = document.createElement('span')
+  heart.className = 'heart'
+  heart.textContent = '❤️'
+  heartsContainer.appendChild(heart)
+}
+gameContainer.appendChild(heartsContainer)
+
+//update health ui
+function updateHealthUI() {
+  healthFill.style.width = `${(playerHealth / playerMaxHealth) * 100}%`
+  const hearts = heartsContainer.children
+  for (let i = 0; i < hearts.length; i++) {
+    hearts[i].style.visibility = i < playerHearts ? 'visible' : 'hidden'
+  }
+}
+updateHealthUI()
 
 const enemyTypes = [
   //we'll define here an enemy object and it's properties 
@@ -62,33 +97,33 @@ const enemyTypes = [
   {
     name: 'blueBall', frames: 10, type: 'fly', animSpeed: 200, scale: 0.5, moveSpeed: 0,
     spriteWidth: 64, spriteHeight: 64, hitboxWidth: 50, hitboxHeight: 50,
-    hitboxOffsetX: 7, hitboxOffsetY: 7
+    hitboxOffsetX: 7, hitboxOffsetY: 7, health: 1
   },
   {
     name: 'greenRobot', frames: 26, type: 'walk', animSpeed: 100, scale: 0.5, moveSpeed: 1.0,
     spriteWidth: 64, spriteHeight: 64, hitboxWidth: 44, hitboxHeight: 58,
-    hitboxOffsetX: 10, hitboxOffsetY: 3
+    hitboxOffsetX: 10, hitboxOffsetY: 3, health: 1
   },
   {
     name: 'robotBall', frames: 16, type: 'walk', animSpeed: 150, scale: 0.5, moveSpeed: 0,
     spriteWidth: 64, spriteHeight: 64, hitboxWidth: 50, hitboxHeight: 50,
-    hitboxOffsetX: 7, hitboxOffsetY: 7
+    hitboxOffsetX: 7, hitboxOffsetY: 7, health: 1
   },
   {
     name: 'greenSnail', frames: 10, type: 'walk', animSpeed: 300, scale: 0.5, moveSpeed: 0.4,
     spriteWidth: 64, spriteHeight: 64, hitboxWidth: 58, hitboxHeight: 32,
-    hitboxOffsetX: 3, hitboxOffsetY: 32
+    hitboxOffsetX: 3, hitboxOffsetY: 32, health: 1
   },
   {
     name: 'yellowBee', frames: 13, type: 'fly', animSpeed: 120, scale: 0.5, moveSpeed: 0.7,
     spriteWidth: 64, spriteHeight: 64, hitboxWidth: 48, hitboxHeight: 48,
-    hitboxOffsetX: 8, hitboxOffsetY: 8
+    hitboxOffsetX: 8, hitboxOffsetY: 8, health: 1
   },
   {
     name: 'bigRobot', frames: 42, type: 'walk', animSpeed: 100, scale: 0.5, moveSpeed: 1.0,
     spriteWidth: 300, spriteHeight: 280,
     hitboxWidth: 280, hitboxHeight: 270,
-    hitboxOffsetX: 10, hitboxOffsetY: 5
+    hitboxOffsetX: 10, hitboxOffsetY: 5, health: 3
   }
 ]
 //store the enemies that spawned
@@ -155,8 +190,100 @@ fetch('collisions.json')
     //criticalErrorOccurred = true
   })
 //event listeners for keys pressed down and released e is a keyboad event and e.key is a string ("arrowleft" / "arrowright" etc...)
-document.addEventListener('keydown', e => keysPressed[e.key] = true)
+document.addEventListener('keydown', e => {
+  if (e.key === '1' && !isAttacking) {
+    startAttack('attack1')
+  } else if (e.key === '2' && !isAttacking) {
+    startAttack('attack2')
+  } else if (e.key === '3' && !isAttacking) {
+    startAttack('attack3')
+  } else if (e.key === 'space' && !isAttacking) {
+    startAttack('attack3')
+  } else {
+    keysPressed[e.key] = true
+  }
+})
 document.addEventListener('keyup', e => keysPressed[e.key] = false)
+
+function startAttack(attackType) {
+  isAttacking = true
+  setPlayerState(attackType)
+  const damageDelay = attackType === 'attack3' ? 525 : 400 // ms
+  setTimeout(() => {
+    if (isAttacking) applyAttackDamage()
+  }, damageDelay)
+  player.addEventListener('animationend', () => {
+    isAttacking = false
+    updatePlayerState()
+  }, { once: true })
+}
+
+function applyAttackDamage() {
+  const playerHitbox = {
+    x: playerX + hitboxOffsetX,
+    y: playerY + mapOffsetY + hitboxOffsetY,
+    width: hitboxWidth,
+    height: hitboxHeight
+  }
+  enemies.forEach(enemy => {
+    const enemyHitbox = getEnemyHitbox(enemy)
+    if (checkAABB(playerHitbox, enemyHitbox)) {
+      enemy.health -= 1
+      enemy.el.classList.add('enemy-hit')
+      setTimeout(() => enemy.el.classList.remove('enemy-hit'), 100)
+      if (enemy.health <= 0) defeatEnemy(enemy)
+    }
+  })
+}
+
+function defeatEnemy(enemy) {
+  enemies = enemies.filter(e => e !== enemy)
+  if (enemy.el && enemy.el.parentNode) {
+    enemy.el.parentNode.removeChild(enemy.el)
+  }
+}
+function playerTakeDamage() {
+  if (isInvincible) return
+  playerHealth -= 20
+  if (playerHealth <= 0) {
+    playerHealth = 0
+    playerHearts -= 1
+    if (playerHearts <= 0) {
+      console.log("Game Over")
+      //*** we'll add game over logic here
+    } else {
+      playerHealth = playerMaxHealth
+    }
+  }
+  updateHealthUI()
+  isHit = true
+  setPlayerState('hit')
+  player.classList.add('player-hit')
+  setTimeout(() => player.classList.remove('player-hit'), 300)
+  player.addEventListener('animationend', () => {
+    isHit = false
+    updatePlayerState()
+  }, { once: true })
+  isInvincible = true
+  setTimeout(() => { isInvincible = false }, 1000)
+}
+
+//check player-enemy collisions
+function checkPlayerEnemyCollisions() {
+  const playerHitbox = {
+    x: playerX + hitboxOffsetX,
+    y: playerY + mapOffsetY + hitboxOffsetY,
+    width: hitboxWidth,
+    height: hitboxHeight
+  }
+  enemies.forEach(enemy => {
+    const enemyHitbox = getEnemyHitbox(enemy)
+    if (checkAABB(playerHitbox, enemyHitbox) && !isAttacking && !isInvincible) {
+      playerTakeDamage()
+    }
+  })
+}
+
 //this part is a debug that shows all player states
 // document.addEventListener('keydown', (e) => {
 //   const playerEl = document.querySelector('.player')
@@ -275,15 +402,15 @@ function createEnemy(typeName, x, y) {
 
     //properties od walking enemies 
     velocityY: 0,
-    onGround: false
+    onGround: false,
+    health: enemyData.health
   }
 
   if (enemy.type.type === 'fly') {
-    // Use specific values from enemyData if present, otherwise use defaults
-    enemy.flyAmplitude = enemyData.flyAmplitude !== undefined ? enemyData.flyAmplitude : (15 + Math.random() * 20);
-    enemy.flyFrequency = enemyData.flyFrequency !== undefined ? enemyData.flyFrequency : (0.002 + Math.random() * 0.0015);
+    //we use specific values from enemyData if they exist or we use defaults
+    enemy.flyAmplitude = enemyData.flyAmplitude !== undefined ? enemyData.flyAmplitude : (15 + Math.random() * 20)
+    enemy.flyFrequency = enemyData.flyFrequency !== undefined ? enemyData.flyFrequency : (0.002 + Math.random() * 0.0015)
   }
-  // For walking enemies, onGround starts false; handleEnemyVerticalCollisions will manage it.
 
   return enemy
 }
@@ -295,8 +422,8 @@ function handleEnemyVerticalCollisions(enemy) {
   //we'll store enemy Y (top/bottom) before applying velocity
   //important cause if current y overlaps with a collision tile
   //we can reset it to prevY note:based on this we'll define a search area (bigger than hitbox)
-  const prevhitboxTopY = enemy.prevY + enemyHitbox.OffsetY;
-  const prevhitboxBottomY = enemy.prevY + enemyHitbox.spriteHeight;
+  const prevhitboxTopY = enemy.prevY + enemyHitbox.OffsetY
+  const prevhitboxBottomY = enemy.prevY + enemyHitbox.spriteHeight
 
   //apply gravity and velocity
   enemy.velocityY += gravity
@@ -374,13 +501,7 @@ function handleEnemyMovementAndCollisions(enemy) {
   enemy.prevX = enemy.x
   //add direction and movement 
   //this is speculative meaning it won't actually apply yet, we'll check if it overlaps with a collision tile later
-  if (enemy.type !== 'greenRobot') {
-    enemy.x += (enemy.facingRight ? 1 : -1) * enemy.type.moveSpeed
-
-  } else {
-    enemy.x += (enemy.facingRight ? 1 : -1) * enemy.type.moveSpeed
-
-  }
+  enemy.x += (enemy.facingRight ? 1 : -1) * enemy.type.moveSpeed
   //hitbox after (speculative) movement
   let currentHitbox = getEnemyHitbox(enemy)
   //to switch directions 
@@ -494,7 +615,7 @@ function updateEnemyLogic(deltaTime) {
       }
     }
     //on the enemies spritesheet all exceot greenSnail face left by default so right should flip them
-    let finalScaleX = enemy.facingRight ? 1 : -1;
+    let finalScaleX = enemy.facingRight ? 1 : -1
     if (enemy.type.name !== 'greenSnail') {
       finalScaleX *= -1
     }
@@ -639,6 +760,7 @@ function handleHorizontalCollisions() {
 }
 
 function updatePlayerState() {
+  if (isAttacking || isHit) return
   const isMovingHorizontally = keysPressed['ArrowLeft'] || keysPressed['ArrowRight']
   //this checks for jumping -1 instead of 0 
   //setplayerstate will create a class under player with classlist.add name it to "state"
@@ -783,6 +905,7 @@ function gameLoop(timestamp) {
   handleHorizontalCollisions()
   updatePlayerState()
   updateEnemyLogic(deltaTime)
+  checkPlayerEnemyCollisions()
 
   const playerSize = 0.6
   player.style.transform = `translate(${playerX}px, ${playerY}px) scaleX(${facingRight ? 1 : -1}) scale(${playerSize})`

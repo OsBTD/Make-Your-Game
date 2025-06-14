@@ -1,18 +1,59 @@
 body {
     background-color: black;
+    display: grid;
+    align-items: center;
+    justify-content: center;
 }
 
 .game-container {
-    width: 2304px;
-    /* This is very wide for a typical screen view, ensure transform:scale makes it fit */
+    width: 100vw;
     height: 576px;
-    position: relative;
     overflow: hidden;
-    background-color: #000000ec;
-    border: none;
-    transform: scale(3);
-    /* This scales the whole game up */
+    position: relative;
+}
+
+.camera {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+
+}
+
+.world {
+    position: absolute;
+    width: 2304px;
+    height: 2304px;
     transform-origin: top left;
+    z-index: 1;
+    image-rendering: pixelated;
+
+}
+
+.player,
+.enemy {
+    z-index: 2;
+    /* Above world background */
+}
+
+.hitbox {
+    z-index: 3;
+    /* Above player/enemies for visibility */
+}
+
+.scoreboard,
+.health-bar,
+.hearts,
+.debug-controls {
+    z-index: 10;
+    /* Above everything */
+}
+
+.player,
+.enemy,
+.hitbox {
+    position: absolute;
+    transform-origin: bottom center;
 }
 
 .player {
@@ -20,7 +61,6 @@ body {
     width: 96px;
     height: 64px;
     z-index: 2;
-    /* Player on top */
     background: no-repeat;
     background-image: url('drawing.png');
     background-size: 2976px 704px;
@@ -39,12 +79,39 @@ body {
     image-rendering: pixelated;
 }
 
+/* style.css */
+.pause-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-family: Arial, sans-serif;
+    z-index: 50;
+}
+
+.coin {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: url('coin.png') no-repeat;
+    background-size: contain;
+    z-index: 2;
+}
+
 .scoreboard {
     position: absolute;
     /* Added for positioning */
     top: 10px;
-    left: 10px;
+    left: 220px;
     color: white;
+    background-color: black;
     font-family: Arial, sans-serif;
     z-index: 10;
     /* Above everything */
@@ -108,7 +175,6 @@ body {
 }
 
 
-/* Player Keyframes - REMAINS UNCHANGED */
 @keyframes anim_idle1 {
     to {
         background-position-x: -2112px;
@@ -184,7 +250,7 @@ body {
     /* Enemies between map and player */
     /* Common background image, actual image should be 1664px wide, 320px tall */
     background-image: url('enemies.png');
-    background-size: 1664px 320px;
+    background-size: 1664px 384px;
     background-repeat: no-repeat;
 }
 
@@ -269,33 +335,66 @@ body {
 /* 13 frames * 64px */
 
 
-.enemy-bigRobot {
-    width: 300px;
-    height: 280px;
-    background-image: url('bigRobot.png');
-    background-size: 12600px 1400px;
-    background-position-y: -280px;
-    /* Run state, second row */
-    animation: anim_enemy_boss_run 4.2s steps(42) infinite;
-}
-
-@keyframes anim_enemy_boss_run {
-    to {
-        background-position-x: -12600px;
-    }
-}
-
 .enemy-hit {
-  filter: contrast(150%) brightness(1.5);
-  transition: all 0.1s;
+    filter: contrast(150%) brightness(1.5);
+    transition: all 0.1s;
+}
+.enemy-explosion {
+    width:  64px;
+    height: 64px;
+    background-image: url('enemies.png');
+    background-size: 1664px 384px;
+    background-position-y: -320px;      /* 5 * 64px */
+    animation: anim_enemy_explosion 0.8s steps(12) 1 forwards;
+}
+
+@keyframes anim_enemy_explosion {
+    /* 12 frames × 64px = 768px */
+    to { background-position-x: -768px; }
 }
 
 .player-hit {
-  animation: damageFlash 0.3s ease-out;
+    animation: damageFlash 0.3s ease-out;
 }
 
 @keyframes damageFlash {
-  0% { opacity: 1; }
-  50% { opacity: 0.3; }
-  100% { opacity: 1; }
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+
+    100% {
+        opacity: 1;
+    }
 }
+
+
+.health-bar {
+    width: 200px;
+    height: 20px;
+    background: gray;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+.health-fill {
+    height: 100%;
+    background: red;
+    width: 100%;
+}
+
+.hearts {
+    position: absolute;
+    top: 40px;
+    left: 10px;
+}
+
+.heart {
+    font-size: 24px;
+    margin-right: 5px;
+}
+

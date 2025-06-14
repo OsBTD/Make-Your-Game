@@ -1,3 +1,12 @@
+//activate debugs
+//this will show hitboxes + attack hitbox
+//the collisions layer
+//add invinciblity on/off
+//add stage jumps 
+let debugMode = false
+//toggle for invincibility in debug 
+let isInvincibleDebug = false
+
 //reference player dom element from css
 const player = document.querySelector('.player')
 //define default state
@@ -13,7 +22,7 @@ function setPlayerState(newState) {
 
 //background full map 4 stages
 const mapEl = document.querySelector('.map')
-//game viewport, 1 stage at a time 
+//game viewport, 1 stage at a time
 const gameContainer = document.querySelector('.game-container')
 //x and y positions in world
 let playerX = 20
@@ -39,38 +48,246 @@ let mapOffsetY = 0
 let currentStage = 0 //0 to 3
 //this tells if we just transitioned stages, fixes a stage skipping bug by debouncing stage transitions
 let justTransitioned = false
+//defeated player
+let isDefeated = false
+
 //this is the size of one tile 16px * 16px
 const tileSize = 16
 //size of player and its hitbox
 const spriteWidth = 96
 const spriteHeight = 64
-const hitboxWidth = 48
-const hitboxHeight = 56
+const hitboxWidth = 30
+const hitboxHeight = 30
+//hitbox grows when attacking 
+const attackHitboxWidth = 50
+const attackHitboxHeight = hitboxHeight
 //this would change x and y values of hitbox relative to the player so it allows moving the hitbox and perfecting it now it's bottom center
 const hitboxOffsetX = (spriteWidth - hitboxWidth) / 2
 const hitboxOffsetY = spriteHeight - hitboxHeight
-//now starting positions for player in each stage, 576 is the height of 1 stage so we move him on the y axis to next stage and we can specify his position which is helpful
+//now for attack hitboxe
+const attackhitboxOffsetX = hitboxOffsetX
+const attackhitboxOffsetY = hitboxOffsetY
+
+//now starting positions for player in each stage, 576 is the height of 1 stage so we move him on the y axis to next stage and we can specify his position + facingdirection which is helpful
 const stageStarts = [
-  { x: 50, y: 200 },
-  { x: 100, y: 200 + 576 },
-  { x: 150, y: 200 + 576 * 2 },
-  { x: 200, y: 200 + 576 * 3 }
+  { x: 5, y: 10, facingRight: true },
+  { x: 390, y: 586, facingRight: false },       // 576 + 10
+  { x: 800, y: 1157, facingRight: false },      // 1152 + 5
+  { x: 200, y: 1738, facingRight: false }       // 1728 + 10
 ]
+// Pause overlay + controls
+let isPaused = false
+const pauseOverlay = document.createElement('div')
+pauseOverlay.className = 'pause-overlay'
+Object.assign(pauseOverlay.style, {
+  position: 'absolute', top: '0', left: '0',
+  width: '100%', height: '100%',
+  backgroundColor: 'rgba(0,0,0,0.6)',
+  display: 'none',
+  flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+  color: 'white', fontFamily: 'Arial,sans-serif', zIndex: '50'
+})
+// Continue button
+const continueBtn = document.createElement('button')
+continueBtn.textContent = 'Pause'
+pauseOverlay.appendChild(continueBtn)
+// Restart Stage
+const restartStageBtn = document.createElement('button')
+restartStageBtn.textContent = 'Restart Stage'
+pauseOverlay.appendChild(restartStageBtn)
+// Restart Game
+const restartGameBtn = document.createElement('button')
+restartGameBtn.textContent = 'Restart Game'
+pauseOverlay.appendChild(restartGameBtn)
+
+gameContainer.appendChild(pauseOverlay)
+
+function togglePause() {
+  isPaused = !isPaused
+  pauseOverlay.style.display = isPaused ? 'flex' : 'none'
+  continueBtn.textContent = isPaused ? 'Continue' : 'Pause'
+  if (isPaused) {
+    lastTimestamp = 0;     // ← clear your timer so the next frame resets cleanly
+  }
+  for (const k in keysPressed) keysPressed[k] = false
+
+}
+
+continueBtn.addEventListener('click', togglePause)
+restartStageBtn.addEventListener('click', restartStage)
+restartGameBtn.addEventListener('click', restartGame)
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    togglePause()
+    e.preventDefault()
+    return
+  }
+  else keysPressed[e.key] = true
+})
+document.addEventListener('keyup', e => { keysPressed[e.key] = false })
+
+// Restart logic
+function restartStage() {
+  lastTimestamp = 0;
+  isPaused = false;
+  pauseOverlay.style.display = 'none';
+  continueBtn.textContent = 'Pause';
+  const s = stageStarts[currentStage]
+  playerX = s.x; playerY = s.y; velocityY = 0; onGround = false; facingRight = s.facingRight
+  setPlayerState('idle2')
+  cameraX = cameraY = 0
+  updateCamera()
+  removeEnemiesForStage(currentStage)
+  removeCoinsForStage()
+  spawnEnemiesForStage(currentStage)
+  spawnCoinsForStage(currentStage)
+  playerHealth = playerMaxHealth; score = 0
+  updateHealthUI()
+  hasKey = false;
+  const keyUI = document.getElementById('ui-key');
+  if (keyUI) keyUI.remove();
+  updateScoreUI();
+}
+function restartGame() {
+  lastTimestamp = 0
+  isPaused = false
+  pauseOverlay.style.display = 'none'
+  continueBtn.textContent = 'Pause'
+  removeEnemiesForStage(currentStage)
+  removeCoinsForStage()
+  currentStage = 0
+  restartStage()
+  hasKey = false;
+  const keyUI = document.getElementById('ui-key');
+  if (keyUI) keyUI.remove();
+  updateScoreUI();
+
+}
+
+//this converts absolute map coordinates to relative screen (camera) coordinates 
+//camera x and y are both 0 but they'll be updated
+//but is helpfull 
+//used to draw everything in world, enemies, coints, debug element etc..
+function worldToScreen(x, y) {
+  return {
+    x: x - cameraX,
+    y: y - cameraY
+  }
+}
+
+//NEW Camera settings
+const camera = document.querySelector('.camera')
+const world = document.querySelector('.world')
+const cameraWidth = 2304
+const cameraHeight = 576
+let cameraX = 0
+let cameraY = 0
+const cameraEl = document.querySelector('.camera')
+const zoomLevel = 2
+//NEW update camera
+function updateCamera() {
+  // Define viewport and world dimensions for clarity
+  const viewportWidth = 800 // From your CSS .game-container
+  const viewportHeight = 576 // From your CSS .game-container
+  const worldWidth = 2304
+
+  // 1. Calculate the camera's target X
+  // Use the viewportWidth for centering, not the old cameraWidth variable
+  const targetX = playerX + (hitboxWidth / 2) - (viewportWidth / 2)
+  const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 2)
+
+  // 2. Smoothly interpolate the camera position towards the target
+  cameraX += (targetX - cameraX) * 0.1
+  cameraY += (targetY - cameraY) * 0.1
+
+  // 3. Clamp the camera to the world and stage boundaries
+  const maxScrollX = worldWidth - viewportWidth
+  cameraX = Math.max(0, Math.min(cameraX, maxScrollX))
+
+  // --- THIS IS THE NEW LOGIC FOR VERTICAL CLAMPING ---
+  // Calculate the top Y coordinate of the current stage
+  const stageTop = currentStage * viewportHeight
+
+  // Clamp the final cameraY to the top of the current stage.
+  cameraY = stageTop
+  // --- END OF NEW LOGIC ---
+
+  // 4. Apply the final transform to the world container
+  world.style.transform = `translate(${-cameraX}px, ${-cameraY}px)`
+}
+// per-stage coin positions (world coords in tiles or pixels, your choice)
+const coinSpawnData = {
+  0: [{ x: 10, y: 10 }, { x: 800, y: 200 }, { x: 830, y: 210 }, { x: 760, y: 200 } /* … */],
+  1: [{ x: 10, y: 10 }, { x: 300, y: 650 }],
+  2: [{ x: 300, y: 600 }, { x: 300, y: 650 }],
+  3: [{ x: 300, y: 600 }, { x: 300, y: 650 }]
+}
+
+let coins = []
+let score = 0
+function createCoin(x, y) {
+  const coinEl = document.createElement('div')
+  coinEl.className = 'coin'
+  gameContainer.appendChild(coinEl)
+  return { el: coinEl, x, y, collected: false }
+}
+//NEW spawn and remove coins
+function spawnCoinsForStage(stage) {
+  const list = coinSpawnData[stage] || []
+  list.forEach(({ x, y }) => {
+    const coin = createCoin(x, y)
+    coins.push(coin)
+  })
+}
+
+function removeCoinsForStage() {
+  coins.forEach(c => {
+    if (!c.collected && c.el.parentNode) c.el.parentNode.removeChild(c.el)
+  })
+  coins = []
+}
+//NEW loops over coins draws them checks collisions
+function drawCoins() {
+  // draw coins and check for collection
+  coins.forEach(coin => {
+    if (coin.collected) return
+    // worldToScreen as you did for enemies:
+    const { x: sx, y: sy } = worldToScreen(coin.x, coin.y)
+    coin.el.style.transform = `translate(${sx}px, ${sy}px)`
+
+    // simple AABB between player hitbox and coin
+    const playerBox = {
+      x: playerX + hitboxOffsetX,
+      y: playerY + hitboxOffsetY,
+      width: hitboxWidth,
+      height: hitboxHeight
+    }
+    const coinBox = { x: coin.x, y: coin.y, width: 16, height: 16 }
+    if (checkAABB(playerBox, coinBox)) {
+      coin.collected = true
+      coin.el.parentNode.removeChild(coin.el)
+      score += 1
+      updateScoreUI()
+    }
+  })
+}
 //player attack and damage 
 let isAttacking = false
 let isHit = false
 let isInvincible = false
+//here we define player health max at 100, starts at max
 const playerMaxHealth = 100
 let playerHealth = playerMaxHealth
 let playerHearts = 3
-//health bar, lives
+//NEW creation and update of healthbar, hearts, coins counter
+//create health bar in gamecontainer and health fill as its child
 const healthBar = document.createElement('div')
 healthBar.className = 'health-bar'
 const healthFill = document.createElement('div')
 healthFill.className = 'health-fill'
 healthBar.appendChild(healthFill)
 gameContainer.appendChild(healthBar)
-
+//create 3 hearts append in gamecontainer
 const heartsContainer = document.createElement('div')
 heartsContainer.className = 'hearts'
 for (let i = 0; i < 3; i++) {
@@ -81,49 +298,72 @@ for (let i = 0; i < 3; i++) {
 }
 gameContainer.appendChild(heartsContainer)
 
-//update health ui
+//update fill bar and hearts
 function updateHealthUI() {
+  //width of fill bar will start at full health bar
+  //it'll get updated to be current health / max health * 100 of original width
   healthFill.style.width = `${(playerHealth / playerMaxHealth) * 100}%`
+  //returns all childs of heartscontainer so all 3 basically
+  //we control their visibility next 
   const hearts = heartsContainer.children
   for (let i = 0; i < hearts.length; i++) {
     hearts[i].style.visibility = i < playerHearts ? 'visible' : 'hidden'
   }
 }
 updateHealthUI()
+const scoreBoard = document.createElement('div');
+scoreBoard.className = 'scoreboard';
+scoreBoard.textContent = `Coins: 0`;
+gameContainer.appendChild(scoreBoard);
 
+const COINS_NEEDED = 3;
+let hasKey = false;
+function updateScoreUI() {
+  scoreBoard.textContent = `Coins: ${score}/${COINS_NEEDED}`;
+  if (!hasKey && score >= COINS_NEEDED) {
+    hasKey = true;
+
+    const keyEl = document.createElement('img');
+    keyEl.src = 'key.png';
+    keyEl.alt = 'Key';
+    keyEl.style.position = 'absolute';
+    keyEl.style.top = '0px';
+    keyEl.style.right = '-50px';
+    keyEl.style.width = '32px';
+    keyEl.style.height = '32px';
+    keyEl.id = 'ui-key';
+    scoreBoard.appendChild(keyEl);
+  }
+}
+
+
+//we'll define here an enemy object and it's properties 
+//name, frames(for css animation), type(walk/fly), scale(control size with transform : scale(n)), movespeed, sprite/hitbox width and height, and hitboxoffsetY and X for hitbox positioning...
 const enemyTypes = [
-  //we'll define here an enemy object and it's properties 
-  //name, frames(for css animation), type(walk/fly), scale(control size with transform : scale(n)), movespeed, sprite/hitbox width and height, and hitboxoffsetY and X for hitbox positioning...
   {
     name: 'blueBall', frames: 10, type: 'fly', animSpeed: 200, scale: 0.5, moveSpeed: 0,
-    spriteWidth: 64, spriteHeight: 64, hitboxWidth: 50, hitboxHeight: 50,
-    hitboxOffsetX: 7, hitboxOffsetY: 7, health: 1
+    spriteWidth: 64, spriteHeight: 64, hitboxWidth: 20, hitboxHeight: 10,
+    hitboxOffsetX: 7, hitboxOffsetY: 16, health: 1, defeated: false
   },
   {
     name: 'greenRobot', frames: 26, type: 'walk', animSpeed: 100, scale: 0.5, moveSpeed: 1.0,
-    spriteWidth: 64, spriteHeight: 64, hitboxWidth: 44, hitboxHeight: 58,
-    hitboxOffsetX: 10, hitboxOffsetY: 3, health: 1
+    spriteWidth: 64, spriteHeight: 64, hitboxWidth: 20, hitboxHeight: 20,
+    hitboxOffsetX: 10, hitboxOffsetY: 3, health: 1, defeated: false
   },
   {
     name: 'robotBall', frames: 16, type: 'walk', animSpeed: 150, scale: 0.5, moveSpeed: 0,
-    spriteWidth: 64, spriteHeight: 64, hitboxWidth: 50, hitboxHeight: 50,
-    hitboxOffsetX: 7, hitboxOffsetY: 7, health: 1
+    spriteWidth: 64, spriteHeight: 64, hitboxWidth: 40, hitboxHeight: 40,
+    hitboxOffsetX: 7, hitboxOffsetY: 7, health: 1, defeated: false
   },
   {
     name: 'greenSnail', frames: 10, type: 'walk', animSpeed: 300, scale: 0.5, moveSpeed: 0.4,
-    spriteWidth: 64, spriteHeight: 64, hitboxWidth: 58, hitboxHeight: 32,
-    hitboxOffsetX: 3, hitboxOffsetY: 32, health: 1
+    spriteWidth: 64, spriteHeight: 64, hitboxWidth: 20, hitboxHeight: 15,
+    hitboxOffsetX: 3, hitboxOffsetY: 3, health: 1, defeated: false
   },
   {
     name: 'yellowBee', frames: 13, type: 'fly', animSpeed: 120, scale: 0.5, moveSpeed: 0.7,
-    spriteWidth: 64, spriteHeight: 64, hitboxWidth: 48, hitboxHeight: 48,
-    hitboxOffsetX: 8, hitboxOffsetY: 8, health: 1
-  },
-  {
-    name: 'bigRobot', frames: 42, type: 'walk', animSpeed: 100, scale: 0.5, moveSpeed: 1.0,
-    spriteWidth: 300, spriteHeight: 280,
-    hitboxWidth: 280, hitboxHeight: 270,
-    hitboxOffsetX: 10, hitboxOffsetY: 5, health: 3
+    spriteWidth: 64, spriteHeight: 64, hitboxWidth: 20, hitboxHeight: 20,
+    hitboxOffsetX: 8, hitboxOffsetY: 8, health: 1, defeated: false
   }
 ]
 //store the enemies that spawned
@@ -134,43 +374,64 @@ let lastTimestamp = 0
 //this part is for debugging the collisions layer 
 //get color returns all the colors we need depending on the value we enter from 1,2,3,4,7,8,0 these are based on the collision values I gave to each tile on the collisions.json
 //next part render debug tiles just makes divs with those colors 
+function getColor(value) {
+  switch (value) {
+    case 1: return 'rgb(255, 0, 0)'   // Ground
+    case 2: return 'rgb(0, 255, 0)'   // Wall
+    case 3: return 'rgb(0, 0, 255)'   // One-way platform
+    case 7: return 'rgb(128, 0, 128)'  // Two-way platform
+    case 4: return 'rgb(255, 255, 0)'  // Hazard
+    case 8: return 'rgb(255, 165, 0)'  // Door
+    case 0: return 'transparent'
+    default: return 'rgba(200, 200, 200, 0.3)'
+  }
+}
+function renderDebugTiles() {
+  for (let y = 0; y < collisions.length; y++) {
+    for (let x = 0; x < collisions[y].length; x++) {
+      const value = collisions[y][x]
+      if (!value) continue
+      const tile = document.createElement('div')
+      tile.style.position = 'absolute'
+      tile.style.left = `${x * tileSize}px`
+      tile.style.top = `${y * tileSize}px`
+      tile.style.width = `${tileSize}px`
+      tile.style.height = `${tileSize}px`
+      tile.style.backgroundColor = getColor(value)
+      tile.style.pointerEvents = 'none'
+      tile.style.zIndex = '0'
+      mapEl.appendChild(tile)
+    }
+  }
+}
 
-// function getColor(value) {
-//   switch (value) {
-//     case 1: return 'rgb(255, 0, 0)'   // Ground
-//     case 2: return 'rgb(0, 255, 0)'   // Wall
-//     case 3: return 'rgb(0, 0, 255)'   // One-way platform
-//     case 7: return 'rgb(128, 0, 128)'  // Two-way platform
-//     case 4: return 'rgb(255, 255, 0)'  // Hazard
-//     case 8: return 'rgb(255, 165, 0)'  // Door
-//     case 0: return 'transparent'
-//     default: return 'rgba(200, 200, 200, 0.3)'
-//   }
-// }
-// function renderDebugTiles() {
-//   for (let y = 0; y < collisions.length; y++) {
-//     for (let x = 0; x < collisions[y].length; x++) {
-//       const value = collisions[y][x]
-//       if (!value) continue
-//       const tile = document.createElement('div')
-//       tile.style.position = 'absolute'
-//       tile.style.left = `${x * tileSize}px`
-//       tile.style.top = `${y * tileSize}px`
-//       tile.style.width = `${tileSize}px`
-//       tile.style.height = `${tileSize}px`
-//       tile.style.backgroundColor = getColor(value)
-//       tile.style.pointerEvents = 'none'
-//       tile.style.zIndex = '0'
-//       mapEl.appendChild(tile)
-//     }
-//   }
-// }
-
-// criticalErrorOccurred = false
+//here if debug is true we'll create player's hitbox in red
+//and attackhitbox in green 
+let playerHitboxEl
+if (debugMode) {
+  playerHitboxEl = document.createElement('div')
+  playerHitboxEl.className = 'hitbox player-hitbox'
+  playerHitboxEl.style.position = 'absolute'
+  playerHitboxEl.style.border = '1px solid red'
+  playerHitboxEl.style.pointerEvents = 'none'
+  playerHitboxEl.style.zIndex = '100'
+  world.appendChild(playerHitboxEl)
+}
+let attackHitboxEl
+if (debugMode) {
+  attackHitboxEl = document.createElement('div')
+  attackHitboxEl.className = 'hitbox attack-hitbox'
+  attackHitboxEl.style.position = 'absolute'
+  attackHitboxEl.style.border = '1px solid green'
+  attackHitboxEl.style.pointerEvents = 'none'
+  attackHitboxEl.style.zIndex = '100'
+  attackHitboxEl.style.display = 'none'
+  world.appendChild(attackHitboxEl)
+}
 //fetch sends a get request and returns the response (as a promise)
 fetch('collisions.json')
   //if successful we go to the .then block, so there was a response whatever it is, it can be an error like 404 or anything
-  .then(response => response.ok ? response.json() : Promise.reject())//now we check if response was ok 200-299 in this case we return response.json() which unmarshalls it if there's an error we create a promise and reject it
+  .then(response => response.ok ? response.json() : Promise.reject())
   //response was ok now we call response.json() data
   .then(data => {
     //store collisions array (2D because we generate each line in an array on the json)
@@ -178,17 +439,21 @@ fetch('collisions.json')
     collisionsLoaded = true
     mapEl.style.height = (collisions.length * tileSize) + 'px'
     spawnEnemiesForStage(currentStage)
-    // renderDebugTiles()
+    spawnCoinsForStage(currentStage)
+
+    if (debugMode) {
+      renderDebugTiles()
+    }
   })
   //catches all errors from the ones that might happen in fetch or after the fetch is successfull
   .catch(_ => {
     console.error("error fetching collisions.json")
     collisions = [[]]
     collisionsLoaded = true
-    mapEl.style.height = (4 * 576) + 'px'
+    mapEl.style.heightMechanism = (4 * 576) + 'px'
     spawnEnemiesForStage(currentStage)
-    //criticalErrorOccurred = true
   })
+
 //event listeners for keys pressed down and released e is a keyboad event and e.key is a string ("arrowleft" / "arrowright" etc...)
 document.addEventListener('keydown', e => {
   if (e.key === '1' && !isAttacking) {
@@ -205,29 +470,39 @@ document.addEventListener('keydown', e => {
 })
 document.addEventListener('keyup', e => keysPressed[e.key] = false)
 
+//this takes attack type (attack1,attack2 or 3)
+//sets the player's state to the attack  
+//applies damage after a delay
+//resets 
 function startAttack(attackType) {
   isAttacking = true
   setPlayerState(attackType)
-  const damageDelay = attackType === 'attack3' ? 525 : 400 // ms
+  const delay = attackType === 'attack3' ? 300 : 100
   setTimeout(() => {
     if (isAttacking) applyAttackDamage()
-  }, damageDelay)
+  }, delay)
+  //animationend = css animation completed
   player.addEventListener('animationend', () => {
     isAttacking = false
     updatePlayerState()
   }, { once: true })
 }
 
+//NEW apply attack damage to enemies
 function applyAttackDamage() {
-  const playerHitbox = {
-    x: playerX + hitboxOffsetX,
-    y: playerY + mapOffsetY + hitboxOffsetY,
-    width: hitboxWidth,
+  let attackHitboxX = playerX + hitboxOffsetX
+  if (!facingRight) {
+    attackHitboxX -= (attackHitboxWidth - hitboxWidth)
+  }
+  const playerAttackHitbox = {
+    x: attackHitboxX,
+    y: playerY + hitboxOffsetY,
+    width: attackHitboxWidth,
     height: hitboxHeight
   }
   enemies.forEach(enemy => {
     const enemyHitbox = getEnemyHitbox(enemy)
-    if (checkAABB(playerHitbox, enemyHitbox)) {
+    if (checkAABB(playerAttackHitbox, enemyHitbox)) {
       enemy.health -= 1
       enemy.el.classList.add('enemy-hit')
       setTimeout(() => enemy.el.classList.remove('enemy-hit'), 100)
@@ -236,21 +511,40 @@ function applyAttackDamage() {
   })
 }
 
+//NEW defeat enemy
 function defeatEnemy(enemy) {
-  enemies = enemies.filter(e => e !== enemy)
-  if (enemy.el && enemy.el.parentNode) {
-    enemy.el.parentNode.removeChild(enemy.el)
+  enemy.defeated = true;
+
+  // 1) Switch the enemy’s class to the explosion animation
+  enemy.el.classList.remove(`enemy-${enemy.type.name}`);
+  enemy.el.classList.add('enemy-explosion');
+
+  // 2) Unhook its hitbox
+  if (debugMode && enemy.hitboxEl) {
+    enemy.hitboxEl.remove();
   }
+
+  // 3) When the explosion animation ends, remove the element and from your array
+  enemy.el.addEventListener('animationend', () => {
+    // remove from DOM
+    enemy.el.remove();
+    // remove from your enemies array
+    enemies = enemies.filter(e => e !== enemy);
+  }, { once: true });
 }
+
+//NEW player takes damage
 function playerTakeDamage() {
-  if (isInvincible) return
+  if (isInvincibleDebug || isInvincible || isDefeated) return
   playerHealth -= 20
   if (playerHealth <= 0) {
     playerHealth = 0
     playerHearts -= 1
     if (playerHearts <= 0) {
-      console.log("Game Over")
-      //*** we'll add game over logic here
+      playerHearts = 0; // Ensure it doesn't go negative
+      updateHealthUI();
+      defeatPlayer('game'); // Call defeat for a full game restart
+      return; // Exit the function
     } else {
       playerHealth = playerMaxHealth
     }
@@ -268,51 +562,52 @@ function playerTakeDamage() {
   setTimeout(() => { isInvincible = false }, 1000)
 }
 
-//check player-enemy collisions
+//NEW check player-enemy collisions
 function checkPlayerEnemyCollisions() {
+
   const playerHitbox = {
     x: playerX + hitboxOffsetX,
-    y: playerY + mapOffsetY + hitboxOffsetY,
+    y: playerY + hitboxOffsetY,
     width: hitboxWidth,
     height: hitboxHeight
   }
   enemies.forEach(enemy => {
+    if (enemy.defeated) return
+
     const enemyHitbox = getEnemyHitbox(enemy)
     if (checkAABB(playerHitbox, enemyHitbox) && !isAttacking && !isInvincible) {
       playerTakeDamage()
     }
   })
 }
+function defeatPlayer(restartType) {
+  // Prevent the function from running multiple times if already triggered
+  if (isDefeated) return;
 
-//this part is a debug that shows all player states
-// document.addEventListener('keydown', (e) => {
-//   const playerEl = document.querySelector('.player')
-//   switch (e.key) {
-//     case '1': playerEl.className = 'player idle1'
-// break
-//     case '2': playerEl.className = 'player idle2'
-// break
-//     case '3': playerEl.className = 'player run'
-// break
-//     case '4': playerEl.className = 'player jump'
-//  break
-//     case '5': playerEl.className = 'player fall
-//  break
-//     case '6': playerEl.className = 'player attack1'
-// break
-//     case '7': playerEl.className = 'player attack2'
-// break
-//     case '8': playerEl.className = 'player attack3'
-// break
-//     case '9': playerEl.className = 'player hit'
-// break
-//     case '0': playerEl.className = 'player dizzy'
-// break
-//     case '.': playerEl.className = 'player ko'
-// break
-//   }
-// })
+  isDefeated = true;
+  isAttacking = false; // Cancel any attacks
+  velocityY = 0;       // Stop the player from falling
 
+  // Clear any pressed keys to stop movement
+  for (const k in keysPressed) {
+    keysPressed[k] = false;
+  }
+
+  setPlayerState('ko');
+
+  // Listen for the CSS animation to finish
+  player.addEventListener('animationend', () => {
+    // Make sure we are responding to the 'ko' animation ending, not another one
+    if (playerState === 'ko') {
+      isDefeated = false; // Reset the state
+      if (restartType === 'game') {
+        restartGame();
+      } else { // 'stage'
+        restartStage();
+      }
+    }
+  }, { once: true }); // { once: true } automatically removes the listener after it runs
+}
 //collision detection with the axis-aligned bounding box
 //returns true is two squares collide
 function checkAABB(a, b) {
@@ -321,7 +616,6 @@ function checkAABB(a, b) {
     a.y < b.y + b.height && //a top edge < b bottom edge
     a.y + a.height > b.y //a bottom edge > b top edge
 }
-
 //calculation of enemy hitbox
 function getEnemyHitbox(enemy) {
   const type = enemy.type //we get the type from the enemy object 
@@ -366,7 +660,7 @@ function pixelToTile(x, y) {
 //enemy creation ex : createnemy(greenRobot, 50, 100) 
 function createEnemy(typeName, x, y) {
   //.find takes a callback as argument loops throught the array returns first element 
-  //where applying the function returns true/truthy value or 
+  //where applying the function returns true/truthy value 
   //if 0 elements it returns undefined
   const enemyData = enemyTypes.find(et => et.name === typeName)
   if (!enemyData) {
@@ -378,7 +672,7 @@ function createEnemy(typeName, x, y) {
   gameContainer.appendChild(enemyEl)
   //enemy is just the properties associated with the enemy 
   const enemy = {
-    //almost eveything here can will be overwritten later (on spawndata)
+    //almost eveything here can/will be overwritten later (on spawndata)
     //enemy el is a reference to the dom element itself, we can update its properties (using transform for instance)
     el: enemyEl,
     x: x,
@@ -403,7 +697,8 @@ function createEnemy(typeName, x, y) {
     //properties od walking enemies 
     velocityY: 0,
     onGround: false,
-    health: enemyData.health
+    health: enemyData.health,
+    defeated: false
   }
 
   if (enemy.type.type === 'fly') {
@@ -411,9 +706,19 @@ function createEnemy(typeName, x, y) {
     enemy.flyAmplitude = enemyData.flyAmplitude !== undefined ? enemyData.flyAmplitude : (15 + Math.random() * 20)
     enemy.flyFrequency = enemyData.flyFrequency !== undefined ? enemyData.flyFrequency : (0.002 + Math.random() * 0.0015)
   }
-
+  //create enemy hitbox if debug mode is active
+  if (debugMode) {
+    enemy.hitboxEl = document.createElement('div')
+    enemy.hitboxEl.className = 'hitbox enemy-hitbox'
+    enemy.hitboxEl.style.position = 'absolute'
+    enemy.hitboxEl.style.border = '1px solid blue'
+    enemy.hitboxEl.style.pointerEvents = 'none'
+    enemy.hitboxEl.style.zIndex = '100'
+    gameContainer.appendChild(enemy.hitboxEl)
+  }
   return enemy
 }
+
 //for now this only works on walking enemies
 function handleEnemyVerticalCollisions(enemy) {
   if (enemy.type.type !== 'walk' || !collisionsLoaded) return
@@ -613,6 +918,7 @@ function updateEnemyLogic(deltaTime) {
           enemy.facingRight = !enemy.facingRight
         }
       }
+
     }
     //on the enemies spritesheet all exceot greenSnail face left by default so right should flip them
     let finalScaleX = enemy.facingRight ? 1 : -1
@@ -624,18 +930,59 @@ function updateEnemyLogic(deltaTime) {
     //for now there's no horizontal scrolling 
     //that's why there's no mapoffsetX (for now*)
     let targetScreenX = enemy.x
-    let targetScreenY = enemy.y - mapOffsetY
+    let targetScreenY = enemy.y
     //apply the css transform and update position : (x, y, scaleX(facingRight), scale())
     enemy.el.style.transform = `translate(${targetScreenX}px, ${targetScreenY}px) scaleX(${finalScaleX}) scale(${enemy.scale})`
+
+    const screenPos = worldToScreen(enemy.x, enemy.y);
+    enemy.el.style.transform = `translate(${screenPos.x}px, ${screenPos.y}px) scaleX(${finalScaleX}) scale(${enemy.scale})`;
+
+    if (debugMode && enemy.hitboxEl) {
+      const hitbox = getEnemyHitbox(enemy)
+      const hitboxScreen = worldToScreen(hitbox.x, hitbox.y)
+      enemy.hitboxEl.style.left = `${hitboxScreen.x}px`
+      enemy.hitboxEl.style.top = `${hitboxScreen.y}px`
+      enemy.hitboxEl.style.width = `${hitbox.width}px`
+      enemy.hitboxEl.style.height = `${hitbox.height}px`
+    }
   })
 }
+function renderDebugElements() {
+  if (debugMode && playerHitboxEl) {
+    const hitbox = {
+      x: playerX + hitboxOffsetX,
+      y: playerY + hitboxOffsetY,
+      width: hitboxWidth,
+      height: hitboxHeight
+    };
+    const screenPos = worldToScreen(hitbox.x, hitbox.y);
+    playerHitboxEl.style.left = `${screenPos.x}px`;
+    playerHitboxEl.style.top = `${screenPos.y}px`;
+    playerHitboxEl.style.width = `${hitbox.width}px`;
+    playerHitboxEl.style.height = `${hitbox.height}px`;
+  }
 
-//Player collisions
+  if (debugMode && isAttacking) {
+    let attackX = playerX + hitboxOffsetX;
+    if (!facingRight) attackX -= (attackHitboxWidth - hitboxWidth);
+
+    const screenPos = worldToScreen(attackX, playerY + hitboxOffsetY);
+    attackHitboxEl.style.left = `${screenPos.x}px`;
+    attackHitboxEl.style.top = `${screenPos.y}px`;
+    attackHitboxEl.style.width = `${attackHitboxWidth}px`;
+    attackHitboxEl.style.height = `${hitboxHeight}px`;
+    attackHitboxEl.style.display = 'block';
+  } else if (debugMode) {
+    attackHitboxEl.style.display = 'none';
+  }
+}
+
+//player collisions
 //starting with landing on ground/platforms, ceilings, doors
 function handleVerticalCollisions() {
   //player's Y position (relative to viewport)
   //mapoffset Y is the amount the map scrolled vertically with
-  const playerWorldY = playerY + mapOffsetY
+  const playerWorldY = playerY
   //hitbox x,y, height,width
   const rect = {
     x: playerX + hitboxOffsetX,
@@ -668,7 +1015,7 @@ function handleVerticalCollisions() {
       //if player's hitbox overlaps with the tile 
       if (checkAABB(rect, tile)) {
         //8 = door
-        if (v === 8) {
+        if (v === 8 && hasKey) {
           playerIsCurrentlyOnDoor = true
           //we debounce stage transitioning
           //the boolean is set to true when we first transition
@@ -682,7 +1029,7 @@ function handleVerticalCollisions() {
           //here's we'll handle landing and ceiling
         } else if ([1, 2, 7].includes(v)) {
           //save player's y before changes
-          const prevPlayerWorldY = prevY + mapOffsetY
+          const prevPlayerWorldY = prevY
           //if falling (<0) or onground (0) 
           //current bottom y position is just rect.y + rect.height 
           //instead we get previous bottom y with prevPlayerWorldY + hitboxOffsetY + hitboxHeight
@@ -691,21 +1038,27 @@ function handleVerticalCollisions() {
           if (velocityY >= 0 && prevPlayerWorldY + hitboxOffsetY + hitboxHeight <= tile.y + 0.5) {
             //adjust player's y position make him land on top of tile
             //set velocity to 0 and onground to true
-            playerY = tile.y - hitboxHeight - hitboxOffsetY - mapOffsetY
+            playerY = tile.y - hitboxHeight - hitboxOffsetY
             velocityY = 0
             newOnGround = true
             //if player was jumping and was previously below tile or at the same level
           } else if (velocityY < 0 && prevPlayerWorldY + hitboxOffsetY >= tile.y + tile.height - 0.5) {
-            playerY = tile.y + tile.height - hitboxOffsetY - mapOffsetY
+            playerY = tile.y + tile.height - hitboxOffsetY
             velocityY = 0
           }
           //for one-way platforms we only handle landing 
           //no bottom collisions
-        } else if (v === 3 && velocityY >= 0 && (prevY + mapOffsetY + hitboxOffsetY + hitboxHeight) <= tile.y + 0.5) {
-          playerY = tile.y - hitboxHeight - hitboxOffsetY - mapOffsetY
+        } else if (v === 3 && velocityY >= 0 && (prevY + hitboxOffsetY + hitboxHeight) <= tile.y + 0.5) {
+          playerY = tile.y - hitboxHeight - hitboxOffsetY
           velocityY = 0
           newOnGround = true
+        } else if (v === 4 && !isInvincible && !isInvincibleDebug) {
+          defeatPlayer('stage'); // Call defeat for a stage restart
+          playerHearts = Math.max(0, playerHearts - 1);
+          updateHealthUI();
+          return; // Exit the function immediately
         }
+
       }
     }
   }
@@ -719,7 +1072,7 @@ function handleVerticalCollisions() {
 
 function handleHorizontalCollisions() {
   //set player's y, define hitbox and search area
-  const playerWorldY = playerY + mapOffsetY
+  const playerWorldY = playerY
   const rect = {
     x: playerX + hitboxOffsetX,
     y: playerWorldY + hitboxOffsetY,
@@ -770,6 +1123,10 @@ function updatePlayerState() {
   else if (isMovingHorizontally && onGround) setPlayerState('run')
   else if (onGround) setPlayerState('idle2')
 }
+function renderPlayer() {
+  const playerSize = 0.6;
+  player.style.transform = `translate(${playerX}px, ${playerY}px) scaleX(${facingRight ? 1 : -1}) scale(${playerSize})`;
+}
 
 function transitionToNextStage() {
   //if we're not yet at last stage
@@ -779,12 +1136,11 @@ function transitionToNextStage() {
 
     currentStage++
     //all stages are 576px in height
-    mapOffsetY = 576 * currentStage
     //we'll set player's x and y from stageStarts
     //which determines where should player appear at each stage
     //with y we take the offset into consideration
     playerX = stageStarts[currentStage].x
-    playerY = stageStarts[currentStage].y - mapOffsetY
+    playerY = stageStarts[currentStage].y
     //reset velocity and onground
     //apply offsetY to the map (shift upwards by 576*stage)
     velocityY = 0
@@ -796,8 +1152,8 @@ function transitionToNextStage() {
     justTransitioned = true
     //spawn new enemies 
     spawnEnemiesForStage(currentStage)
-
-    console.log(`Transitioned to stage ${currentStage}, mapOffsetY: ${mapOffsetY}`)
+    spawnCoinsForStage(currentStage)
+    console.log(`Transitioned to stage ${currentStage}`)
 
     //here we should transition to an end screen or something 
     //still dunno what to do here 
@@ -806,17 +1162,15 @@ function transitionToNextStage() {
     justTransitioned = true
   }
 }
+
 //data for spawning enemies for each stage
 const enemySpawnData = {
   0: [
-    { type: 'blueBall', x: 1000, y: 1, active: false, facingLeft: true },
+    { type: 'blueBall', x: 1000, y: 1, active: false, facingLeft: true, },
     { type: 'blueBall', x: 1300, y: 3, active: false, facingLeft: true },
-
     { type: 'greenRobot', x: 730, y: 130, active: false, facingLeft: false },
-
     { type: 'greenSnail', x: 400, y: 100, active: false, facingLeft: true },
     { type: 'yellowBee', x: 2000, y: 30, active: false, facingLeft: true },
-
     { type: 'yellowBee', x: 800, y: 30, active: false, facingLeft: true }
   ],
   1: [
@@ -824,34 +1178,30 @@ const enemySpawnData = {
     { type: 'blueBall', x: 280, y: 700, active: false, facingLeft: true },
     { type: 'yellowBee', x: 450, y: 720, active: false, facingLeft: true },
     { type: 'robotBall', x: 650, y: 776, active: false, facingLeft: true },
-    { type: 'greenSnail', x: 850, y: 776, active: false, facingLeft: true },
+    { type: 'greenSnail', x: 850, y: 776, active: false, facingLeft: true }
   ],
   2: [
     { type: 'yellowBee', x: 150, y: 1300, active: false, facingLeft: true },
     { type: 'greenRobot', x: 500, y: 1352, active: false, facingLeft: true },
     { type: 'blueBall', x: 700, y: 1280, active: false, facingLeft: true },
     { type: 'greenSnail', x: 900, y: 1352, active: false, facingLeft: true },
-    { type: 'bigRobot', x: 1000, y: 1352, active: false, facingLeft: true }
-
   ],
   3: [
     { type: 'greenRobot', x: 200, y: 1928, active: false, facingLeft: true },
     { type: 'blueBall', x: 400, y: 1850, active: false, facingLeft: true },
     { type: 'yellowBee', x: 600, y: 1880, active: false, facingLeft: true },
     { type: 'robotBall', x: 800, y: 1928, active: false, facingLeft: true },
-    { type: 'greenSnail', x: 1000, y: 1928, active: false, facingLeft: true },
+    { type: 'greenSnail', x: 1000, y: 1928, active: false, facingLeft: true }
   ]
 }
+
 function spawnEnemiesForStage(stage) {
   const stageSpawns = enemySpawnData[stage]
   if (!stageSpawns) return
-
   stageSpawns.forEach(spawnData => {
     const enemy = createEnemy(spawnData.type, spawnData.x, spawnData.y)
     if (enemy) {
-      if (spawnData.facingLeft !== undefined) {
-        enemy.facingRight = !spawnData.facingLeft
-      }
+      if (spawnData.facingLeft !== undefined) enemy.facingRight = !spawnData.facingLeft
       enemy.stage = stage
       enemies.push(enemy)
       spawnData.active = true
@@ -864,14 +1214,12 @@ function spawnEnemiesForStage(stage) {
 function removeEnemiesForStage(stage) {
   enemies = enemies.filter(enemy => {
     if (enemy.stage === stage) {
-      if (enemy.el && enemy.el.parentNode) {
-        enemy.el.parentNode.removeChild(enemy.el)
-      }
+      if (enemy.el && enemy.el.parentNode) enemy.el.parentNode.removeChild(enemy.el)
+      if (debugMode && enemy.hitboxEl && enemy.hitboxEl.parentNode) enemy.hitboxEl.parentNode.removeChild(enemy.hitboxEl)
       return false
     }
     return true
   })
-
   const stageSpawns = enemySpawnData[stage]
   if (stageSpawns) {
     stageSpawns.forEach(spawnData => {
@@ -882,34 +1230,114 @@ function removeEnemiesForStage(stage) {
   console.log(`Removed all enemies from stage ${stage}`)
 }
 
+//NEW debug controls with stage buttons and invincible toggle
+if (debugMode) {
+  const debugControls = document.createElement('div')
+  debugControls.className = 'debug-controls'
+  debugControls.style.position = 'fixed'
+  debugControls.style.top = '10px'
+  debugControls.style.right = '10px'
+  debugControls.style.zIndex = '100'
+
+  const stageButtons = document.createElement('div')
+  stageButtons.className = 'stage-buttons'
+  for (let i = 0; i < stageStarts.length; i++) {
+    const button = document.createElement('button')
+    button.textContent = `Stage ${i + 1}`
+    button.addEventListener('click', () => switchToStage(i))
+    stageButtons.appendChild(button)
+  }
+  debugControls.appendChild(stageButtons)
+
+  const invincibleButton = document.createElement('button')
+  invincibleButton.textContent = 'Invincible: OFF'
+  invincibleButton.addEventListener('click', () => {
+    isInvincibleDebug = !isInvincibleDebug
+    invincibleButton.textContent = `Invincible: ${isInvincibleDebug ? 'ON' : 'OFF'}`
+  })
+  debugControls.appendChild(invincibleButton)
+
+  document.body.appendChild(debugControls)
+}
+//NEW debug switch stage 
+function switchToStage(stageIndex) {
+  if (stageIndex < 0 || stageIndex >= stageStarts.length) return
+  removeEnemiesForStage(currentStage)
+  currentStage = stageIndex
+  playerX = stageStarts[currentStage].x
+  playerY = stageStarts[currentStage].y
+  facingRight = stageStarts[stageIndex].facingRight
+  velocityY = 0
+  onGround = false
+  mapEl.style.transform = `translateY(${-mapOffsetY}px)`
+  spawnEnemiesForStage(currentStage)
+  console.log(`Switched to stage ${currentStage}, mapOffsetY: ${mapOffsetY}`)
+}
+
 function gameLoop(timestamp) {
   if (!collisionsLoaded) {
     requestAnimationFrame(gameLoop)
     return
   }
-  if (lastTimestamp === 0) lastTimestamp = timestamp
-  const deltaTime = timestamp - lastTimestamp
-  lastTimestamp = timestamp
+  if (!isPaused) {
+    pauseOverlay.style.display = 'none'
+    if (lastTimestamp === 0) lastTimestamp = timestamp
+    const deltaTime = timestamp - lastTimestamp
+    lastTimestamp = timestamp
+    if (!isDefeated) {
 
-  prevX = playerX
-  prevY = playerY
+    }
+    prevX = playerX
+    prevY = playerY
 
-  if (keysPressed['ArrowLeft']) { playerX -= speed; facingRight = false }
-  if (keysPressed['ArrowRight']) { playerX += speed; facingRight = true }
-  if (keysPressed['ArrowUp'] && onGround) { velocityY = jumpStrength; onGround = false }
+    if (keysPressed['ArrowLeft']) { playerX -= speed, facingRight = false }
+    if (keysPressed['ArrowRight']) { playerX += speed, facingRight = true }
+    if (keysPressed['ArrowUp'] && onGround) { velocityY = jumpStrength, onGround = false }
 
-  if (!onGround) velocityY += gravity
-  playerY += velocityY
+    if (!onGround) velocityY += gravity
+    playerY += velocityY
+    if (!isDefeated) {
+      handleVerticalCollisions()
+      handleHorizontalCollisions()
+      updatePlayerState()
+      checkPlayerEnemyCollisions()
+    }
+    updateEnemyLogic(deltaTime)
+    updateCamera()
+    renderPlayer();
+    renderDebugElements();
+    drawCoins()
 
-  handleVerticalCollisions()
-  handleHorizontalCollisions()
-  updatePlayerState()
-  updateEnemyLogic(deltaTime)
-  checkPlayerEnemyCollisions()
+    //NEW update player hitbox position for debugging
+    if (debugMode && playerHitboxEl) {
+      const playerHitbox = {
+        x: playerX + hitboxOffsetX,
+        y: playerY + hitboxOffsetY,
+        width: hitboxWidth,
+        height: hitboxHeight
+      }
+      playerHitboxEl.style.left = `${playerX + hitboxOffsetX}px`;
+      playerHitboxEl.style.top = `${playerY + hitboxOffsetY}px`;
+      playerHitboxEl.style.width = `${playerHitbox.width}px`
+      playerHitboxEl.style.height = `${playerHitbox.height}px`
+    }
+    if (debugMode && isAttacking) {
+      let attackHitboxX = playerX + hitboxOffsetX
+      if (!facingRight) {
+        attackHitboxX -= (attackHitboxWidth - hitboxWidth)
+      }
+      attackHitboxEl.style.left = `${attackHitboxX}px`
+      attackHitboxEl.style.top = `${playerY + hitboxOffsetY}px`
+      attackHitboxEl.style.width = `${attackHitboxWidth}px`
+      attackHitboxEl.style.height = `${hitboxHeight}px`
+      attackHitboxEl.style.display = 'block'
+    } else if (debugMode) {
+      attackHitboxEl.style.display = 'none'
+    }
 
-  const playerSize = 0.6
-  player.style.transform = `translate(${playerX}px, ${playerY}px) scaleX(${facingRight ? 1 : -1}) scale(${playerSize})`
-
+  } else {
+    pauseOverlay.style.display = 'flex';
+  }
   requestAnimationFrame(gameLoop)
 }
 

@@ -166,7 +166,6 @@ document.getElementById('play-again-btn').addEventListener('click', () => {
   pauseOverlay.appendChild(controlsLegend)
 
 })
-// Add touch controls for mobile
 const touchControls = document.createElement('div')
 touchControls.className = 'touch-controls'
 Object.assign(touchControls.style, {
@@ -179,11 +178,13 @@ Object.assign(touchControls.style, {
   zIndex: '100',
   pointerEvents: 'none'
 })
+
 const movementButtons = document.createElement('div')
 movementButtons.style.display = 'flex'
 movementButtons.style.gap = '10px'
 movementButtons.style.marginLeft = '10px'
 movementButtons.style.pointerEvents = 'auto'
+
 const leftButton = document.createElement('button')
 leftButton.textContent = '←'
 leftButton.className = 'touch-button'
@@ -210,6 +211,25 @@ Object.assign(rightButton.style, {
   cursor: 'pointer'
 })
 
+movementButtons.appendChild(leftButton)
+movementButtons.appendChild(rightButton)
+
+const actionButtons = document.createElement('div')
+actionButtons.style.display = 'flex'
+actionButtons.style.flexDirection = 'column'
+actionButtons.style.alignItems = 'flex-end'
+actionButtons.style.gap = '10px'
+actionButtons.style.marginRight = '10px'
+actionButtons.style.pointerEvents = 'auto'
+
+const topRow = document.createElement('div')
+topRow.style.display = 'flex'
+topRow.style.gap = '10px'
+
+const bottomRow = document.createElement('div')
+bottomRow.style.display = 'flex'
+bottomRow.style.gap = '10px'
+
 const jumpButton = document.createElement('button')
 jumpButton.textContent = '↑'
 jumpButton.className = 'touch-button'
@@ -223,25 +243,39 @@ Object.assign(jumpButton.style, {
   cursor: 'pointer'
 })
 
-movementButtons.appendChild(leftButton)
-movementButtons.appendChild(rightButton)
-movementButtons.appendChild(jumpButton)
-touchControls.appendChild(movementButtons)
-
-// Create action buttons (attack, pause)
-const actionButtons = document.createElement('div')
-actionButtons.style.display = 'flex'
-actionButtons.style.gap = '10px'
-actionButtons.style.marginRight = '10px'
-actionButtons.style.pointerEvents = 'auto'
-
-const attackButton = document.createElement('button')
-attackButton.textContent = 'Attack'
-attackButton.className = 'touch-button'
-Object.assign(attackButton.style, {
-  width: '80px',
+const attack1Button = document.createElement('button')
+attack1Button.textContent = '1'
+attack1Button.className = 'touch-button'
+Object.assign(attack1Button.style, {
+  width: '60px',
   height: '60px',
-  fontSize: '18px',
+  fontSize: '24px',
+  backgroundColor: 'rgba(255, 100, 100, 0.7)',
+  border: '2px solid #000',
+  borderRadius: '10px',
+  cursor: 'pointer'
+})
+
+const attack2Button = document.createElement('button')
+attack2Button.textContent = '2'
+attack2Button.className = 'touch-button'
+Object.assign(attack2Button.style, {
+  width: '60px',
+  height: '60px',
+  fontSize: '24px',
+  backgroundColor: 'rgba(255, 100, 100, 0.7)',
+  border: '2px solid #000',
+  borderRadius: '10px',
+  cursor: 'pointer'
+})
+
+const attack3Button = document.createElement('button')
+attack3Button.textContent = '3'
+attack3Button.className = 'touch-button'
+Object.assign(attack3Button.style, {
+  width: '60px',
+  height: '60px',
+  fontSize: '24px',
   backgroundColor: 'rgba(255, 100, 100, 0.7)',
   border: '2px solid #000',
   borderRadius: '10px',
@@ -261,10 +295,20 @@ Object.assign(pauseButton.style, {
   cursor: 'pointer'
 })
 
-actionButtons.appendChild(attackButton)
-actionButtons.appendChild(pauseButton)
+topRow.appendChild(jumpButton)
+topRow.appendChild(pauseButton)
+
+bottomRow.appendChild(attack1Button)
+bottomRow.appendChild(attack2Button)
+bottomRow.appendChild(attack3Button)
+
+actionButtons.appendChild(topRow)
+actionButtons.appendChild(bottomRow)
+
+touchControls.appendChild(movementButtons)
 touchControls.appendChild(actionButtons)
 gameContainer.appendChild(touchControls)
+
 // Add event listeners for touch controls
 leftButton.addEventListener('touchstart', (e) => {
   e.preventDefault()
@@ -296,9 +340,19 @@ jumpButton.addEventListener('touchend', (e) => {
   keysPressed['ArrowUp'] = false
 }, { passive: false })
 
-attackButton.addEventListener('touchstart', (e) => {
+attack1Button.addEventListener('touchstart', (e) => {
   e.preventDefault()
   if (!isAttacking) startAttack('attack1')
+}, { passive: false })
+
+attack2Button.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  if (!isAttacking) startAttack('attack2')
+}, { passive: false })
+
+attack3Button.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  if (!isAttacking) startAttack('attack3')
 }, { passive: false })
 
 pauseButton.addEventListener('touchstart', (e) => {
@@ -307,12 +361,12 @@ pauseButton.addEventListener('touchstart', (e) => {
 }, { passive: false })
 
 function isMobileDevice() {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 }
 if (isMobileDevice()) {
-  touchControls.style.display = 'flex';
+  touchControls.style.display = 'flex'
 } else {
-  touchControls.style.display = 'none';
+  touchControls.style.display = 'none'
 }
 
 function worldToScreen(x, y) {

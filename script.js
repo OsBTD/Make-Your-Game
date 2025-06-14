@@ -265,6 +265,46 @@ actionButtons.appendChild(attackButton)
 actionButtons.appendChild(pauseButton)
 touchControls.appendChild(actionButtons)
 gameContainer.appendChild(touchControls)
+// Add event listeners for touch controls
+leftButton.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowLeft'] = true
+}, { passive: false })
+
+leftButton.addEventListener('touchend', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowLeft'] = false
+}, { passive: false })
+
+rightButton.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowRight'] = true
+}, { passive: false })
+
+rightButton.addEventListener('touchend', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowRight'] = false
+}, { passive: false })
+
+jumpButton.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowUp'] = true
+}, { passive: false })
+
+jumpButton.addEventListener('touchend', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowUp'] = false
+}, { passive: false })
+
+attackButton.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  if (!isAttacking) startAttack('attack1')
+}, { passive: false })
+
+pauseButton.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  togglePause()
+}, { passive: false })
 
 function isMobileDevice() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);

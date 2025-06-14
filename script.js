@@ -264,69 +264,9 @@ Object.assign(pauseButton.style, {
 actionButtons.appendChild(attackButton)
 actionButtons.appendChild(pauseButton)
 touchControls.appendChild(actionButtons)
-
 gameContainer.appendChild(touchControls)
 
-leftButton.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowLeft'] = true
-})
-leftButton.addEventListener('touchend', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowLeft'] = false
-})
-leftButton.addEventListener('touchcancel', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowLeft'] = false
-})
 
-rightButton.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowRight'] = true
-})
-rightButton.addEventListener('touchend', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowRight'] = false
-})
-rightButton.addEventListener('touchcancel', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowRight'] = false
-})
-
-jumpButton.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowUp'] = true
-})
-jumpButton.addEventListener('touchend', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowUp'] = false
-})
-jumpButton.addEventListener('touchcancel', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowUp'] = false
-})
-
-attackButton.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  if (!isAttacking) startAttack('attack1')
-})
-attackButton.addEventListener('touchend', (e) => {
-  e.preventDefault()
-})
-attackButton.addEventListener('touchcancel', (e) => {
-  e.preventDefault()
-})
-
-pauseButton.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  togglePause()
-})
-function updateTouchControlsVisibility() {
-  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
-  touchControls.style.display = isTouchDevice ? 'flex' : 'none'
-}
-updateTouchControlsVisibility()
-window.addEventListener('resize', updateTouchControlsVisibility)
 function worldToScreen(x, y) {
   return {
     x: x - cameraX,
@@ -1163,5 +1103,167 @@ function gameLoop(timestamp) {
   }
   requestAnimationFrame(gameLoop)
 }
+// Add touch controls for mobile
+const touchControls = document.createElement('div')
+touchControls.className = 'touch-controls'
+Object.assign(touchControls.style, {
+  position: 'fixed',
+  bottom: '10px',
+  left: '0',
+  width: '100%',
+  display: 'flex',
+  justifyContent: 'space-between',
+  zIndex: '100',
+  pointerEvents: 'none'
+})
 
+const movementButtons = document.createElement('div')
+movementButtons.style.display = 'flex'
+movementButtons.style.gap = '10px'
+movementButtons.style.marginLeft = '10px'
+movementButtons.style.pointerEvents = 'auto'
+
+const leftButton = document.createElement('button')
+leftButton.textContent = '←'
+leftButton.className = 'touch-button'
+Object.assign(leftButton.style, {
+  width: '60px',
+  height: '60px',
+  fontSize: '24px',
+  backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  border: '2px solid #000',
+  borderRadius: '10px',
+  cursor: 'pointer'
+})
+
+const rightButton = document.createElement('button')
+rightButton.textContent = '→'
+rightButton.className = 'touch-button'
+Object.assign(rightButton.style, {
+  width: '60px',
+  height: '60px',
+  fontSize: '24px',
+  backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  border: '2px solid #000',
+  borderRadius: '10px',
+  cursor: 'pointer'
+})
+
+const jumpButton = document.createElement('button')
+jumpButton.textContent = '↑'
+jumpButton.className = 'touch-button'
+Object.assign(jumpButton.style, {
+  width: '60px',
+  height: '60px',
+  fontSize: '24px',
+  backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  border: '2px solid #000',
+  borderRadius: '10px',
+  cursor: 'pointer'
+})
+
+movementButtons.appendChild(leftButton)
+movementButtons.appendChild(rightButton)
+movementButtons.appendChild(jumpButton)
+touchControls.appendChild(movementButtons)
+
+const actionButtons = document.createElement('div')
+actionButtons.style.display = 'flex'
+actionButtons.style.gap = '10px'
+actionButtons.style.marginRight = '10px'
+actionButtons.style.pointerEvents = 'auto'
+
+const attackButton = document.createElement('button')
+attackButton.textContent = 'Attack'
+attackButton.className = 'touch-button'
+Object.assign(attackButton.style, {
+  width: '80px',
+  height: '60px',
+  fontSize: '18px',
+  backgroundColor: 'rgba(255, 100, 100, 0.7)',
+  border: '2px solid #000',
+  borderRadius: '10px',
+  cursor: 'pointer'
+})
+
+const pauseButton = document.createElement('button')
+pauseButton.textContent = 'Pause'
+pauseButton.className = 'touch-button'
+Object.assign(pauseButton.style, {
+  width: '80px',
+  height: '60px',
+  fontSize: '18px',
+  backgroundColor: 'rgba(100, 100, 255, 0.7)',
+  border: '2px solid #000',
+  borderRadius: '10px',
+  cursor: 'pointer'
+})
+
+actionButtons.appendChild(attackButton)
+actionButtons.appendChild(pauseButton)
+touchControls.appendChild(actionButtons)
+
+gameContainer.appendChild(touchControls)
+
+leftButton.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowLeft'] = true
+})
+leftButton.addEventListener('touchend', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowLeft'] = false
+})
+leftButton.addEventListener('touchcancel', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowLeft'] = false
+})
+
+rightButton.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowRight'] = true
+})
+rightButton.addEventListener('touchend', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowRight'] = false
+})
+rightButton.addEventListener('touchcancel', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowRight'] = false
+})
+
+jumpButton.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowUp'] = true
+})
+jumpButton.addEventListener('touchend', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowUp'] = false
+})
+jumpButton.addEventListener('touchcancel', (e) => {
+  e.preventDefault()
+  keysPressed['ArrowUp'] = false
+})
+
+attackButton.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  if (!isAttacking) startAttack('attack1')
+})
+attackButton.addEventListener('touchend', (e) => {
+  e.preventDefault()
+})
+attackButton.addEventListener('touchcancel', (e) => {
+  e.preventDefault()
+})
+
+pauseButton.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  togglePause()
+})
+
+function updateTouchControlsVisibility() {
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+  touchControls.style.display = isTouchDevice ? 'flex' : 'none'
+}
+updateTouchControlsVisibility()
+window.addEventListener('resize', updateTouchControlsVisibility)
 requestAnimationFrame(gameLoop)

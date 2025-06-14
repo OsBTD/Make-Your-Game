@@ -1,5 +1,5 @@
 //activate debugs
-let debugMode = true
+let debugMode = false
 let isInvincibleDebug = false
 
 const player = document.querySelector('.player')
@@ -160,6 +160,11 @@ gameContainer.appendChild(endOverlay)
 document.getElementById('play-again-btn').addEventListener('click', () => {
   endOverlay.style.display = 'none'
   restartGame()
+  pauseOverlay.appendChild(continueBtn)
+  pauseOverlay.appendChild(restartStageBtn)
+  pauseOverlay.appendChild(restartGameBtn)
+  pauseOverlay.appendChild(controlsLegend)
+
 })
 
 function worldToScreen(x, y) {

@@ -99,6 +99,15 @@ pauseOverlay.appendChild(restartStageBtn)
 const restartGameBtn = document.createElement('button')
 restartGameBtn.textContent = 'Restart Game'
 pauseOverlay.appendChild(restartGameBtn)
+const controlsLegend = document.createElement('div');
+controlsLegend.style.marginTop = '20px';
+controlsLegend.style.fontSize = '18px';
+controlsLegend.innerHTML = `
+  <p>↑ ↓ ← → : Move</p>
+  <p>1 2 3    : Attack</p>
+  <p>Esc      : Pause / Continue</p>
+`;
+pauseOverlay.appendChild(controlsLegend)
 
 gameContainer.appendChild(pauseOverlay)
 
@@ -163,6 +172,21 @@ function restartGame() {
   updateScoreUI();
 
 }
+const endOverlay = document.createElement('div')
+endOverlay.className = 'pause-overlay'  // reuse pause-overlay styles
+endOverlay.style.display = 'none'       // start hidden
+endOverlay.innerHTML = `
+  <h1>🎉 You Win! 🎉</h1>
+  <button id="play-again-btn">Play Again</button>
+`
+gameContainer.appendChild(endOverlay)
+
+document
+  .getElementById('play-again-btn')
+  .addEventListener('click', () => {
+    endOverlay.style.display = 'none';
+    restartGame();
+  });
 
 //this converts absolute map coordinates to relative screen (camera) coordinates 
 //camera x and y are both 0 but they'll be updated
@@ -217,10 +241,100 @@ function updateCamera() {
 }
 // per-stage coin positions (world coords in tiles or pixels, your choice)
 const coinSpawnData = {
-  0: [{ x: 10, y: 10 }, { x: 800, y: 200 }, { x: 830, y: 210 }, { x: 760, y: 200 } /* … */],
-  1: [{ x: 10, y: 10 }, { x: 300, y: 650 }],
-  2: [{ x: 300, y: 600 }, { x: 300, y: 650 }],
-  3: [{ x: 300, y: 600 }, { x: 300, y: 650 }]
+  0: [
+    { x: 300, y: 80 },
+    { x: 320, y: 75 },
+    { x: 340, y: 80 },
+
+    { x: 840, y: 210 },
+    { x: 820, y: 200 },
+    { x: 800, y: 200 },
+
+
+    { x: 750, y: 500 },
+    { x: 780, y: 505 },
+    { x: 810, y: 510 },
+
+    { x: 1100, y: 500 },
+    { x: 1080, y: 505 },
+    { x: 1060, y: 510 },
+
+    { x: 1600, y: 120 },
+    { x: 1620, y: 125 },
+    { x: 1640, y: 130 },
+
+
+  ],
+
+  1: [
+    { x: 50, y: 80 + 576 },
+    { x: 320, y: 75 + 576 },
+    { x: 340, y: 80 + 576 },
+
+    { x: 840, y: 210 + 576 },
+    { x: 820, y: 200 + 576 },
+    { x: 800, y: 200 + 576 },
+
+
+    { x: 750, y: 500 + 576 },
+    { x: 780, y: 505 + 576 },
+    { x: 810, y: 510 + 576 },
+
+    { x: 1100, y: 500 + 576 },
+    { x: 1080, y: 505 + 576 },
+    { x: 1060, y: 510 + 576 },
+
+    { x: 1600, y: 120 + 576 },
+    { x: 1620, y: 125 + 576 },
+    { x: 1640, y: 130 + 576 },
+
+  ],
+  2: [
+    { x: 300, y: 80 + 2 * 576 },
+    { x: 320, y: 75 + 2 * 576 },
+    { x: 340, y: 80 + 2 * 576 },
+
+    { x: 840, y: 210 + 2 * 576 },
+    { x: 820, y: 200 + 2 * 576 },
+    { x: 800, y: 200 + 2 * 576 },
+
+
+    { x: 750, y: 500 + 2 * 576 },
+    { x: 780, y: 505 + 2 * 576 },
+    { x: 810, y: 510 + 2 * 576 },
+
+    { x: 1100, y: 500 + 2 * 576 },
+    { x: 1080, y: 505 + 2 * 576 },
+    { x: 1060, y: 510 + 2 * 576 },
+
+    { x: 1600, y: 120 + 2 * 576 },
+    { x: 1620, y: 125 + 2 * 576 },
+    { x: 1640, y: 130 + 2 * 576 },
+
+  ],
+  3: [
+    { x: 10, y: 80 + 3 * 576 },
+    { x: 320, y: 75 + 3 * 576 },
+    { x: 340, y: 80 + 3 * 576 },
+
+    { x: 840, y: 210 + 3 * 576 },
+    { x: 820, y: 200 + 3 * 576 },
+    { x: 800, y: 200 + 3 * 576 },
+
+
+    { x: 750, y: 500 + 3 * 576 },
+    { x: 780, y: 505 + 3 * 576 },
+    { x: 810, y: 510 + 3 * 576 },
+
+    { x: 1100, y: 500 + 3 * 576 },
+    { x: 1080, y: 505 + 3 * 576 },
+    { x: 1060, y: 510 + 3 * 576 },
+
+    { x: 1600, y: 120 + 3 * 576 },
+    { x: 1620, y: 125 + 3 * 576 },
+    { x: 1640, y: 130 + 3 * 576 },
+
+  ],
 }
 
 let coins = []
@@ -234,6 +348,7 @@ function createCoin(x, y) {
 //NEW spawn and remove coins
 function spawnCoinsForStage(stage) {
   const list = coinSpawnData[stage] || []
+
   list.forEach(({ x, y }) => {
     const coin = createCoin(x, y)
     coins.push(coin)
@@ -1016,6 +1131,12 @@ function handleVerticalCollisions() {
       if (checkAABB(rect, tile)) {
         //8 = door
         if (v === 8 && hasKey) {
+          if (currentStage === stageStarts.length - 1) {
+            // last door, show end screen
+            endOverlay.style.display = 'flex';
+            return;
+          }
+
           playerIsCurrentlyOnDoor = true
           //we debounce stage transitioning
           //the boolean is set to true when we first transition
@@ -1133,7 +1254,8 @@ function transitionToNextStage() {
   if (currentStage < stageStarts.length - 1) {
     //remove all enemies
     removeEnemiesForStage(currentStage)
-
+    removeCoinsForStage(currentStage)
+    score = score - COINS_NEEDED
     currentStage++
     //all stages are 576px in height
     //we'll set player's x and y from stageStarts

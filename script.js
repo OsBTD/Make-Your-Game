@@ -190,8 +190,7 @@ function updateCamera() {
   const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 2)
   cameraX += (targetX - cameraX) * 0.1
   cameraY += (targetY - cameraY) * 0.1
-  const maxScrollX = worldWidth - viewportWidth
-  cameraX = Math.max(0, Math.min(cameraX, maxScrollX))
+  cameraX = Math.max(0, Math.min(cameraX, worldWidth))
   const stageTop = currentStage * viewportHeight
   cameraY = stageTop
   world.style.transform = `translate(${-cameraX}px, ${-cameraY}px)`

@@ -420,25 +420,23 @@ const coinSpawnData = {
     { x: 1600, y: 120 }, { x: 1620, y: 125 }, { x: 1640, y: 130 }
   ],
   1: [
-    { x: 50, y: 80 + 576 }, { x: 320, y: 75 + 576 }, { x: 340, y: 80 + 576 },
-    { x: 840, y: 210 + 576 }, { x: 820, y: 200 + 576 }, { x: 800, y: 200 + 576 },
-    { x: 750, y: 500 + 576 }, { x: 780, y: 505 + 576 }, { x: 810, y: 510 + 576 },
+    { x: 350, y: 80 + 576 }, { x: 320, y: 75 + 576 }, { x: 290, y: 80 + 576 },
+    { x: 840, y: 140 + 576 }, { x: 820, y: 150 + 576 }, { x: 800, y: 150 + 576 },
     { x: 1100, y: 500 + 576 }, { x: 1080, y: 505 + 576 }, { x: 1060, y: 510 + 576 },
     { x: 1600, y: 120 + 576 }, { x: 1620, y: 125 + 576 }, { x: 1640, y: 130 + 576 }
   ],
   2: [
-    { x: 300, y: 80 + 2 * 576 }, { x: 320, y: 75 + 2 * 576 }, { x: 340, y: 80 + 2 * 576 },
-    { x: 840, y: 210 + 2 * 576 }, { x: 820, y: 200 + 2 * 576 }, { x: 800, y: 200 + 2 * 576 },
+    { x: 200, y: 80 + 2 * 576 }, { x: 220, y: 75 + 2 * 576 }, { x: 240, y: 80 + 2 * 576 },
     { x: 750, y: 500 + 2 * 576 }, { x: 780, y: 505 + 2 * 576 }, { x: 810, y: 510 + 2 * 576 },
     { x: 1100, y: 500 + 2 * 576 }, { x: 1080, y: 505 + 2 * 576 }, { x: 1060, y: 510 + 2 * 576 },
-    { x: 1600, y: 120 + 2 * 576 }, { x: 1620, y: 125 + 2 * 576 }, { x: 1640, y: 130 + 2 * 576 }
+    { x: 1600, y: 50 + 2 * 576 }, { x: 1620, y: 50 + 2 * 576 }, { x: 1640, y: 50 + 2 * 576 }, { x: 1660, y: 50 + 2 * 576 }, { x: 1680, y: 50 + 2 * 576 }, { x: 1580, y: 50 + 2 * 576 }
   ],
   3: [
-    { x: 10, y: 80 + 3 * 576 }, { x: 320, y: 75 + 3 * 576 }, { x: 340, y: 80 + 3 * 576 },
-    { x: 840, y: 210 + 3 * 576 }, { x: 820, y: 200 + 3 * 576 }, { x: 800, y: 200 + 3 * 576 },
+    { x: 300, y: 300 + 3 * 576 }, { x: 320, y: 300 + 3 * 576 }, { x: 340, y: 300 + 3 * 576 },
+    { x: 480, y: 210 + 3 * 576 }, { x: 570, y: 200 + 3 * 576 }, { x: 700, y: 200 + 3 * 576 },
     { x: 750, y: 500 + 3 * 576 }, { x: 780, y: 505 + 3 * 576 }, { x: 810, y: 510 + 3 * 576 },
     { x: 1100, y: 500 + 3 * 576 }, { x: 1080, y: 505 + 3 * 576 }, { x: 1060, y: 510 + 3 * 576 },
-    { x: 1600, y: 120 + 3 * 576 }, { x: 1620, y: 125 + 3 * 576 }, { x: 1640, y: 130 + 3 * 576 }
+    { x: 1600, y: 50 + 3 * 576 }, { x: 1620, y: 55 + 3 * 576 }, { x: 1640, y: 60 + 3 * 576 }
   ]
 }
 
@@ -1108,21 +1106,26 @@ const enemySpawnData = {
     { type: 'greenRobot', x: 100, y: 576 + 200, active: false, facingLeft: true },
     { type: 'blueBall', x: 280, y: 576 + 94, active: false, facingLeft: true },
     { type: 'yellowBee', x: 450, y: 576 + 86, active: false, facingLeft: true },
-    { type: 'greenRobot', x: 1000, y: 576 + 500, active: false, facingLeft: true },
+    { type: 'yellowBee', x: 10, y: 576 + 86, active: false, facingLeft: true },
+    { type: 'greenRobot', x: 1200, y: 576 + 400, active: false, facingLeft: true },
+    { type: 'greenRobot', x: 1300, y: 576 + 400, active: false, facingLeft: false },
 
   ],
   2: [
-    { type: 'yellowBee', x: 150, y: (576 * 2) + 1300, active: false, facingLeft: true },
-    { type: 'greenRobot', x: 500, y: (576 * 2) + 1352, active: false, facingLeft: true },
-    { type: 'blueBall', x: 700, y: (576 * 2) + 1280, active: false, facingLeft: true },
-    { type: 'greenSnail', x: 900, y: (576 * 2) + 1352, active: false, facingLeft: true }
+    { type: 'yellowBee', x: 10, y: (576 * 2) + 10, active: false, facingLeft: true },
+    { type: 'greenRobot', x: 500, y: (576 * 2) + 10, active: false, facingLeft: true },
+    { type: 'blueBall', x: 700, y: (576 * 2) + 10, active: false, facingLeft: true },
+    { type: 'greenSnail', x: 1500, y: (576 * 2) + 10, active: false, facingLeft: true },
+    { type: 'greenRobot', x: 1100, y: (576 * 2) + 300, active: false, facingLeft: true },
+    { type: 'greenRobot', x: 1300, y: (576 * 2) + 300, active: false, facingLeft: false },
   ],
   3: [
-    { type: 'greenRobot', x: 200, y: (576 * 3) + 1928, active: false, facingLeft: true },
-    { type: 'blueBall', x: 400, y: (576 * 3) + 1850, active: false, facingLeft: true },
-    { type: 'yellowBee', x: 600, y: (576 * 3) + 1880, active: false, facingLeft: true },
-    { type: 'robotBall', x: 800, y: (576 * 3) + 1928, active: false, facingLeft: true },
-    { type: 'greenSnail', x: 1000, y: (576 * 3) + 1928, active: false, facingLeft: true }
+    { type: 'greenRobot', x: 1600, y: (576 * 3) + 10, active: false, facingLeft: true },
+    { type: 'blueBall', x: 400, y: (576 * 3) + 180, active: false, facingLeft: true },
+    { type: 'blueBall', x: 500, y: (576 * 3) + 180, active: false, facingLeft: true },
+    { type: 'blueBall', x: 600, y: (576 * 3) + 175, active: false, facingLeft: true },
+    { type: 'greenRobot', x: 800, y: (576 * 3) + 10, active: false, facingLeft: true },
+    { type: 'greenSnail', x: 1000, y: (576 * 3) + 10, active: false, facingLeft: true }
   ]
 }
 
@@ -1185,6 +1188,7 @@ if (debugMode) {
 function switchToStage(stageIndex) {
   if (stageIndex < 0 || stageIndex >= stageStarts.length) return
   removeEnemiesForStage(currentStage)
+  removeCoinsForStage(currentStage)
   currentStage = stageIndex
   playerX = stageStarts[currentStage].x
   playerY = stageStarts[currentStage].y
@@ -1193,6 +1197,8 @@ function switchToStage(stageIndex) {
   onGround = false
   mapEl.style.transform = `translateY(${-mapOffsetY}px)`
   spawnEnemiesForStage(currentStage)
+  spawnCoinsForStage(currentStage)
+
   console.log(`Switched to stage ${currentStage}, mapOffsetY: ${mapOffsetY}`)
 }
 

@@ -1,8 +1,0 @@
-Placement Coins/enemies 
-Robotbig image ✓ removed and we need Minus ❤️ ✓
-Collisions ✓
-pause restart ✓
-Player's death / hazards ✓
-Music 🎵 
-Add key and no transition if no key ✓
-Coins not spawning in stages 234 ✓

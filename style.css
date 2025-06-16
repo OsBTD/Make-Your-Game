@@ -398,19 +398,3 @@ body {
     margin-right: 5px;
 }
 
-.touch-controls {
-  user-select: none;
-  -webkit-user-select: none;
-  -ms-touch-action: none;
-  touch-action: none;
-}
-.touch-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.8;
-  transition: opacity 0.2s;
-}
-.touch-button:active {
-  opacity: 1;
-}

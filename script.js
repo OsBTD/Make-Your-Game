@@ -1,5 +1,5 @@
 //activate debugs
-let debugMode = false
+let debugMode = true
 let isInvincibleDebug = false
 
 const player = document.querySelector('.player')
@@ -123,7 +123,6 @@ function restartStage() {
   removeCoinsForStage()
   spawnEnemiesForStage(currentStage)
   spawnCoinsForStage(currentStage)
-  playerHealth = playerMaxHealth
   score = 0
   hasKey = false
   const keyUI = document.getElementById('ui-key')
@@ -137,17 +136,31 @@ function restartGame() {
   isPaused = false
   pauseOverlay.style.display = 'none'
   continueBtn.textContent = 'Pause'
+  while (heartsContainer.firstChild) {
+    heartsContainer.removeChild(heartsContainer.firstChild);
+  }
+  for (let i = 0; i < 3; i++) {
+    const heart = document.createElement('span');
+    heart.className = 'heart';
+    heart.textContent = '❤️';
+    heartsContainer.appendChild(heart);
+  }
   removeEnemiesForStage(currentStage)
   removeCoinsForStage()
   currentStage = 0
   score = 0
   hasKey = false
+  playerHearts = 3
+  playerHealth = playerMaxHealth
+  console.log(`restartGame: playerHearts set to ${playerHearts}`);
+
   const keyUI = document.getElementById('ui-key')
   if (keyUI) keyUI.remove()
+
   updateScoreUI()
+  updateHealthUI()
   restartStage()
 }
-
 const endOverlay = document.createElement('div')
 endOverlay.className = 'pause-overlay'
 endOverlay.style.display = 'none'
@@ -497,11 +510,13 @@ for (let i = 0; i < 3; i++) {
   heart.textContent = '❤️'
   heartsContainer.appendChild(heart)
 }
+
 gameContainer.appendChild(heartsContainer)
 
 function updateHealthUI() {
   healthFill.style.width = `${(playerHealth / playerMaxHealth) * 100}%`
   const hearts = heartsContainer.children
+  console.log(`updateHealthUI: playerHearts=${playerHearts}, hearts in DOM=${hearts.length}`);
   for (let i = 0; i < hearts.length; i++) {
     hearts[i].style.visibility = i < playerHearts ? 'visible' : 'hidden'
   }
@@ -725,8 +740,12 @@ function defeatPlayer(restartType) {
   player.addEventListener('animationend', () => {
     if (playerState === 'ko') {
       isDefeated = false
-      if (restartType === 'game') restartGame()
-      else restartStage()
+      if (restartType === 'game') {
+        playerHearts = 3
+        restartGame()
+      } else {
+        restartStage()
+      }
     }
   }, { once: true })
 }
@@ -996,9 +1015,15 @@ function handleVerticalCollisions() {
           velocityY = 0
           newOnGround = true
         } else if (v === 4 && !isInvincible && !isInvincibleDebug) {
-          defeatPlayer('stage')
           playerHearts = Math.max(0, playerHearts - 1)
           updateHealthUI()
+          if (playerHearts <= 0) {
+            // If no hearts are left, it's a full game over
+            defeatPlayer('game');
+          } else {
+            // Otherwise, it's just a stage restart
+            defeatPlayer('stage');
+          }
           return
         }
       }
@@ -1080,24 +1105,24 @@ const enemySpawnData = {
     { type: 'yellowBee', x: 800, y: 30, active: false, facingLeft: true }
   ],
   1: [
-    { type: 'greenRobot', x: 100, y: 776, active: false, facingLeft: true },
-    { type: 'blueBall', x: 280, y: 700, active: false, facingLeft: true },
-    { type: 'yellowBee', x: 450, y: 720, active: false, facingLeft: true },
-    { type: 'robotBall', x: 650, y: 776, active: false, facingLeft: true },
-    { type: 'greenSnail', x: 850, y: 776, active: false, facingLeft: true }
+    { type: 'greenRobot', x: 100, y: 576 + 200, active: false, facingLeft: true },
+    { type: 'blueBall', x: 280, y: 576 + 94, active: false, facingLeft: true },
+    { type: 'yellowBee', x: 450, y: 576 + 86, active: false, facingLeft: true },
+    { type: 'greenRobot', x: 1000, y: 576 + 500, active: false, facingLeft: true },
+
   ],
   2: [
-    { type: 'yellowBee', x: 150, y: 1300, active: false, facingLeft: true },
-    { type: 'greenRobot', x: 500, y: 1352, active: false, facingLeft: true },
-    { type: 'blueBall', x: 700, y: 1280, active: false, facingLeft: true },
-    { type: 'greenSnail', x: 900, y: 1352, active: false, facingLeft: true }
+    { type: 'yellowBee', x: 150, y: (576 * 2) + 1300, active: false, facingLeft: true },
+    { type: 'greenRobot', x: 500, y: (576 * 2) + 1352, active: false, facingLeft: true },
+    { type: 'blueBall', x: 700, y: (576 * 2) + 1280, active: false, facingLeft: true },
+    { type: 'greenSnail', x: 900, y: (576 * 2) + 1352, active: false, facingLeft: true }
   ],
   3: [
-    { type: 'greenRobot', x: 200, y: 1928, active: false, facingLeft: true },
-    { type: 'blueBall', x: 400, y: 1850, active: false, facingLeft: true },
-    { type: 'yellowBee', x: 600, y: 1880, active: false, facingLeft: true },
-    { type: 'robotBall', x: 800, y: 1928, active: false, facingLeft: true },
-    { type: 'greenSnail', x: 1000, y: 1928, active: false, facingLeft: true }
+    { type: 'greenRobot', x: 200, y: (576 * 3) + 1928, active: false, facingLeft: true },
+    { type: 'blueBall', x: 400, y: (576 * 3) + 1850, active: false, facingLeft: true },
+    { type: 'yellowBee', x: 600, y: (576 * 3) + 1880, active: false, facingLeft: true },
+    { type: 'robotBall', x: 800, y: (576 * 3) + 1928, active: false, facingLeft: true },
+    { type: 'greenSnail', x: 1000, y: (576 * 3) + 1928, active: false, facingLeft: true }
   ]
 }
 

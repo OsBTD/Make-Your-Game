@@ -402,7 +402,7 @@ function updateCamera() {
   const stageTop = currentStage * viewportHeight
   const stageBottom = (currentStage * viewportHeight) + viewportHeight
   const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 2)
-  cameraY = (targetY - cameraY) * 0.3
+  cameraY = (targetY - cameraY)
   cameraY = Math.max(stageTop, cameraY)
   if ((cameraY + cameraHeight) > stageBottom) {
     cameraY = stageBottom - cameraHeight

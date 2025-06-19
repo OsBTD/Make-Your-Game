@@ -321,32 +321,32 @@ gameContainer.appendChild(touchControls)
 // Add event listeners for touch controls
 leftButton.addEventListener('touchstart', (e) => {
   e.preventDefault()
-  keysPressed['ArrowLeft'] = true
+  keysPressed['q'] = true
 }, { passive: false })
 
 leftButton.addEventListener('touchend', (e) => {
   e.preventDefault()
-  keysPressed['ArrowLeft'] = false
+  keysPressed['q'] = false
 }, { passive: false })
 
 rightButton.addEventListener('touchstart', (e) => {
   e.preventDefault()
-  keysPressed['ArrowRight'] = true
+  keysPressed['d'] = true
 }, { passive: false })
 
 rightButton.addEventListener('touchend', (e) => {
   e.preventDefault()
-  keysPressed['ArrowRight'] = false
+  keysPressed['d'] = false
 }, { passive: false })
 
 jumpButton.addEventListener('touchstart', (e) => {
   e.preventDefault()
-  keysPressed['ArrowUp'] = true
+  keysPressed['z'] = true
 }, { passive: false })
 
 jumpButton.addEventListener('touchend', (e) => {
   e.preventDefault()
-  keysPressed['ArrowUp'] = false
+  keysPressed['z'] = false
 }, { passive: false })
 
 attack1Button.addEventListener('touchstart', (e) => {

@@ -393,36 +393,29 @@ let cameraX = 0
 let cameraY = 0
 
 function updateCamera() {
-  const viewportWidth = 800
-  const viewportHeight = 576
-  const worldWidth = 2304
-  const targetX = playerX + (hitboxWidth / 2) - (viewportWidth / 2)
-  cameraX += (targetX - cameraX) * 0.1
-  cameraX = Math.max(0, Math.min(cameraX, worldWidth))
-  const stageTop = currentStage * viewportHeight
-  if (!isMobileDevice) {
-    const stageBottom = (currentStage * viewportHeight) + viewportHeight
-    const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 2)
-    cameraY += (targetY - cameraY)
-    cameraY = Math.max(stageTop, cameraY)
-    if ((cameraY + cameraHeight) > stageBottom) {
-      cameraY = stageBottom - cameraHeight
-    }
+  // Define viewport dimensions based on device type
+  const viewportWidth = 800;
+  const viewportHeight = isMobileDevice() ? window.innerHeight : 576;
+  const worldWidth = 2304;
 
-  } else {
-    var Height = window.innerHeight
-    const stageBottom = (currentStage * viewportHeight) + viewportHeight
-    const targetY = playerY + (hitboxHeight / 2) - (Height / 2)
-    cameraY += (targetY - cameraY)
-    cameraY = Math.max(stageTop, cameraY)
-    if ((cameraY + cameraHeight) > stageBottom) {
-      cameraY = stageBottom - cameraHeight
-    }
+  // Calculate target X to center the player horizontally
+  const targetX = playerX + (hitboxWidth / 2) - (viewportWidth / 2);
+  cameraX += (targetX - cameraX) * 0.1; // Smooth horizontal movement
+  cameraX = Math.max(0, Math.min(cameraX, worldWidth - viewportWidth));
 
-  }
+  // Define stage boundaries
+  const stageTop = currentStage * 576; // Each stage is 576px tall
+  const stageBottom = stageTop + 576;
 
+  // Calculate target Y to center the player vertically
+  const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 2);
+  cameraY += (targetY - cameraY) * 0.3; // Smooth vertical movement for both mobile and desktop
 
-  world.style.transform = `translate(${-cameraX}px, ${-cameraY}px)`
+  // Clamp cameraY within stage boundaries
+  cameraY = Math.max(stageTop, Math.min(cameraY, stageBottom - viewportHeight));
+
+  // Apply the transform to the world element
+  world.style.transform = `translate(${-cameraX}px, ${-cameraY}px)`;
 }
 
 const coinSpawnData = {

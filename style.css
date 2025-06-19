@@ -6,6 +6,8 @@ body {
 }
 
 .game-container {
+    top: 0;
+    left: 0;
     width: 100vw;
     height: 576px;
     overflow: hidden;
@@ -13,6 +15,8 @@ body {
 }
 
 .camera {
+    top: 0;
+    left: 0;
     position: absolute;
     width: 100%;
     height: 100%;
@@ -21,6 +25,8 @@ body {
 }
 
 .world {
+    top: 0;
+    left: 0;
     position: absolute;
     width: 2304px;
     height: 2304px;
@@ -339,18 +345,23 @@ body {
     filter: contrast(150%) brightness(1.5);
     transition: all 0.1s;
 }
+
 .enemy-explosion {
-    width:  64px;
+    width: 64px;
     height: 64px;
     background-image: url('enemies.png');
     background-size: 1664px 384px;
-    background-position-y: -320px;      /* 5 * 64px */
+    background-position-y: -320px;
+    /* 5 * 64px */
     animation: anim_enemy_explosion 0.8s steps(12) 1 forwards;
 }
 
 @keyframes anim_enemy_explosion {
+
     /* 12 frames × 64px = 768px */
-    to { background-position-x: -768px; }
+    to {
+        background-position-x: -768px;
+    }
 }
 
 .player-hit {
@@ -397,4 +408,3 @@ body {
     font-size: 24px;
     margin-right: 5px;
 }
-

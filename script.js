@@ -253,6 +253,7 @@ Object.assign(rightButton.style, {
   borderRadius: '10px',
   cursor: 'pointer'
 })
+
 movementButtons.appendChild(leftButton)
 movementButtons.appendChild(rightButton)
 
@@ -284,6 +285,7 @@ Object.assign(jumpButton.style, {
   borderRadius: '10px',
   cursor: 'pointer'
 })
+
 const attack1Button = document.createElement('button')
 attack1Button.textContent = '1'
 attack1Button.className = 'touch-button'
@@ -296,6 +298,7 @@ Object.assign(attack1Button.style, {
   borderRadius: '10px',
   cursor: 'pointer'
 })
+
 const attack2Button = document.createElement('button')
 attack2Button.textContent = '2'
 attack2Button.className = 'touch-button'
@@ -308,6 +311,7 @@ Object.assign(attack2Button.style, {
   borderRadius: '10px',
   cursor: 'pointer'
 })
+
 const attack3Button = document.createElement('button')
 attack3Button.textContent = '3'
 attack3Button.className = 'touch-button'
@@ -320,6 +324,7 @@ Object.assign(attack3Button.style, {
   borderRadius: '10px',
   cursor: 'pointer'
 })
+
 const pauseButton = document.createElement('button')
 pauseButton.textContent = 'Pause'
 pauseButton.className = 'touch-button'
@@ -332,6 +337,7 @@ Object.assign(pauseButton.style, {
   borderRadius: '10px',
   cursor: 'pointer'
 })
+
 topRow.appendChild(jumpButton)
 topRow.appendChild(pauseButton)
 
@@ -346,7 +352,7 @@ touchControls.appendChild(movementButtons)
 touchControls.appendChild(actionButtons)
 gameContainer.appendChild(touchControls)
 
-
+// Add event listeners for touch controls
 leftButton.addEventListener('touchstart', (e) => {
   e.preventDefault()
   keysPressed['ArrowLeft'] = true
@@ -376,7 +382,8 @@ jumpButton.addEventListener('touchend', (e) => {
   e.preventDefault()
   keysPressed['ArrowUp'] = false
 }, { passive: false })
-addEventListener('touchstart', (e) => {
+
+attack1Button.addEventListener('touchstart', (e) => {
   e.preventDefault()
   if (!isAttacking) startAttack('attack1')
 }, { passive: false })
@@ -403,7 +410,7 @@ if (isMobileDevice()) {
   touchControls.style.display = 'flex'
 } else {
   touchControls.style.display = 'none'
-} 
+}
 
 
 

@@ -1,15 +1,17 @@
+const mapEl = document.querySelector('.map')
+const gameContainer = document.querySelector('.game-container')
+
+//get player's dom element and set default state
 const player = document.querySelector('.player')
 let playerState = 'idle2'
-
+//helper to set new state and remove old one 
 function setPlayerState(newState) {
   if (playerState === newState) return
   player.classList.remove(playerState)
   playerState = newState
   player.classList.add(playerState)
 }
-
-const mapEl = document.querySelector('.map')
-const gameContainer = document.querySelector('.game-container')
+//player's parameters 
 let playerX = 20
 let playerY = 20
 let prevX = playerX
@@ -18,17 +20,8 @@ let velocityY = 0
 const gravity = 0.5
 const speed = 3
 const jumpStrength = -11
-const keysPressed = {}
 let facingRight = true
 let onGround = false
-let collisions = []
-let collisionsLoaded = false
-let mapOffsetY = 0
-let currentStage = 0
-let justTransitioned = false
-let isDefeated = false
-
-const tileSize = 16
 const spriteWidth = 96
 const spriteHeight = 64
 const hitboxWidth = 30
@@ -39,6 +32,15 @@ const hitboxOffsetX = (spriteWidth - hitboxWidth) / 2
 const hitboxOffsetY = spriteHeight - hitboxHeight
 const attackhitboxOffsetX = hitboxOffsetX
 const attackhitboxOffsetY = hitboxOffsetY
+let isDefeated = false
+
+const tileSize = 16
+const keysPressed = {}
+let collisions = []
+let collisionsLoaded = false
+let mapOffsetY = 0
+let currentStage = 0
+let justTransitioned = false
 
 const stageStarts = [
   { x: 5, y: 10, facingRight: true },
@@ -70,18 +72,21 @@ pauseOverlay.appendChild(restartGameBtn)
 const controlsLegend = document.createElement('div')
 controlsLegend.style.marginTop = '20px'
 controlsLegend.style.fontSize = '18px'
-controlsLegend.innerHTML = `
-  <p>↑ ↓ ← → : Move</p>
-  <p>1 2 3    : Attack</p>
-  <p>Esc      : Pause / Continue</p>
+controlsLegend.style.whiteSpace = 'pre-line'
+controlsLegend.textContent = `
+  Move left : q
+  Move right : d
+  Jump : z or space 
+  1 2 3    : Attack
+  Esc      : Pause / Continue
 `
 pauseOverlay.appendChild(controlsLegend)
 gameContainer.appendChild(pauseOverlay)
-
+//the keys are reset to false on here be
 function togglePause() {
   isPaused = !isPaused
   pauseOverlay.style.display = isPaused ? 'flex' : 'none'
-  continueBtn.textContent = isPaused ? 'Continue' : 'Pause'
+  continueBtn.textContent = 'Continue'
   if (isPaused) {
     lastTimestamp = 0
   }
@@ -91,6 +96,7 @@ function togglePause() {
 continueBtn.addEventListener('click', togglePause)
 restartStageBtn.addEventListener('click', restartStage)
 restartGameBtn.addEventListener('click', restartGame)
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     togglePause()
@@ -105,7 +111,6 @@ function restartStage() {
   lastTimestamp = 0
   isPaused = false
   pauseOverlay.style.display = 'none'
-  continueBtn.textContent = 'Pause'
   const s = stageStarts[currentStage]
   playerX = s.x
   playerY = s.y
@@ -116,7 +121,7 @@ function restartStage() {
   cameraX = cameraY = 0
   updateCamera()
   removeEnemiesForStage(currentStage)
-  removeCoinsForStage()
+  removeCoinsForStage(currentStage)
   spawnEnemiesForStage(currentStage)
   spawnCoinsForStage(currentStage)
   score = 0
@@ -131,24 +136,19 @@ function restartGame() {
   lastTimestamp = 0
   isPaused = false
   pauseOverlay.style.display = 'none'
-  continueBtn.textContent = 'Pause'
-  while (heartsContainer.firstChild) {
-    heartsContainer.removeChild(heartsContainer.firstChild);
-  }
+  // while (heartsContainer.firstChild) {
+  //   heartsContainer.removeChild(heartsContainer.firstChild)
+  // }
+  heartsContainer.innerHTML = ''
   for (let i = 0; i < 3; i++) {
-    const heart = document.createElement('span');
-    heart.className = 'heart';
-    heart.textContent = '❤️';
-    heartsContainer.appendChild(heart);
+    const heart = document.createElement('span')
+    heart.className = 'heart'
+    heart.textContent = '❤️'
+    heartsContainer.appendChild(heart)
   }
-  removeEnemiesForStage(currentStage)
-  removeCoinsForStage()
   currentStage = 0
-  score = 0
-  hasKey = false
   playerHearts = 3
   playerHealth = playerMaxHealth
-  console.log(`restartGame: playerHearts set to ${playerHearts}`);
 
   const keyUI = document.getElementById('ui-key')
   if (keyUI) keyUI.remove()
@@ -175,208 +175,6 @@ document.getElementById('play-again-btn').addEventListener('click', () => {
   pauseOverlay.appendChild(controlsLegend)
 
 })
-const touchControls = document.createElement('div')
-touchControls.className = 'touch-controls'
-Object.assign(touchControls.style, {
-  position: 'fixed',
-  bottom: '10px',
-  left: '0',
-  width: '100%',
-  display: 'flex',
-  justifyContent: 'space-between',
-  zIndex: '100',
-  pointerEvents: 'none'
-})
-
-const movementButtons = document.createElement('div')
-movementButtons.style.display = 'flex'
-movementButtons.style.gap = '10px'
-movementButtons.style.marginLeft = '10px'
-movementButtons.style.pointerEvents = 'auto'
-
-const leftButton = document.createElement('button')
-leftButton.textContent = '←'
-leftButton.className = 'touch-button'
-Object.assign(leftButton.style, {
-  width: '60px',
-  height: '60px',
-  fontSize: '24px',
-  backgroundColor: 'rgba(255, 255, 255, 0.7)',
-  border: '2px solid #000',
-  borderRadius: '10px',
-  cursor: 'pointer'
-})
-
-const rightButton = document.createElement('button')
-rightButton.textContent = '→'
-rightButton.className = 'touch-button'
-Object.assign(rightButton.style, {
-  width: '60px',
-  height: '60px',
-  fontSize: '24px',
-  backgroundColor: 'rgba(255, 255, 255, 0.7)',
-  border: '2px solid #000',
-  borderRadius: '10px',
-  cursor: 'pointer'
-})
-
-movementButtons.appendChild(leftButton)
-movementButtons.appendChild(rightButton)
-
-const actionButtons = document.createElement('div')
-actionButtons.style.display = 'flex'
-actionButtons.style.flexDirection = 'column'
-actionButtons.style.alignItems = 'flex-end'
-actionButtons.style.gap = '10px'
-actionButtons.style.marginRight = '10px'
-actionButtons.style.pointerEvents = 'auto'
-
-const topRow = document.createElement('div')
-topRow.style.display = 'flex'
-topRow.style.gap = '10px'
-
-const bottomRow = document.createElement('div')
-bottomRow.style.display = 'flex'
-bottomRow.style.gap = '10px'
-
-const jumpButton = document.createElement('button')
-jumpButton.textContent = '↑'
-jumpButton.className = 'touch-button'
-Object.assign(jumpButton.style, {
-  width: '60px',
-  height: '60px',
-  fontSize: '24px',
-  backgroundColor: 'rgba(255, 255, 255, 0.7)',
-  border: '2px solid #000',
-  borderRadius: '10px',
-  cursor: 'pointer'
-})
-
-const attack1Button = document.createElement('button')
-attack1Button.textContent = '1'
-attack1Button.className = 'touch-button'
-Object.assign(attack1Button.style, {
-  width: '60px',
-  height: '60px',
-  fontSize: '24px',
-  backgroundColor: 'rgba(255, 100, 100, 0.7)',
-  border: '2px solid #000',
-  borderRadius: '10px',
-  cursor: 'pointer'
-})
-
-const attack2Button = document.createElement('button')
-attack2Button.textContent = '2'
-attack2Button.className = 'touch-button'
-Object.assign(attack2Button.style, {
-  width: '60px',
-  height: '60px',
-  fontSize: '24px',
-  backgroundColor: 'rgba(255, 100, 100, 0.7)',
-  border: '2px solid #000',
-  borderRadius: '10px',
-  cursor: 'pointer'
-})
-
-const attack3Button = document.createElement('button')
-attack3Button.textContent = '3'
-attack3Button.className = 'touch-button'
-Object.assign(attack3Button.style, {
-  width: '60px',
-  height: '60px',
-  fontSize: '24px',
-  backgroundColor: 'rgba(255, 100, 100, 0.7)',
-  border: '2px solid #000',
-  borderRadius: '10px',
-  cursor: 'pointer'
-})
-
-const pauseButton = document.createElement('button')
-pauseButton.textContent = 'Pause'
-pauseButton.className = 'touch-button'
-Object.assign(pauseButton.style, {
-  width: '80px',
-  height: '60px',
-  fontSize: '18px',
-  backgroundColor: 'rgba(100, 100, 255, 0.7)',
-  border: '2px solid #000',
-  borderRadius: '10px',
-  cursor: 'pointer'
-})
-
-topRow.appendChild(jumpButton)
-topRow.appendChild(pauseButton)
-
-bottomRow.appendChild(attack1Button)
-bottomRow.appendChild(attack2Button)
-bottomRow.appendChild(attack3Button)
-
-actionButtons.appendChild(topRow)
-actionButtons.appendChild(bottomRow)
-
-touchControls.appendChild(movementButtons)
-touchControls.appendChild(actionButtons)
-gameContainer.appendChild(touchControls)
-
-// Add event listeners for touch controls
-leftButton.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowLeft'] = true
-}, { passive: false })
-
-leftButton.addEventListener('touchend', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowLeft'] = false
-}, { passive: false })
-
-rightButton.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowRight'] = true
-}, { passive: false })
-
-rightButton.addEventListener('touchend', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowRight'] = false
-}, { passive: false })
-
-jumpButton.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowUp'] = true
-}, { passive: false })
-
-jumpButton.addEventListener('touchend', (e) => {
-  e.preventDefault()
-  keysPressed['ArrowUp'] = false
-}, { passive: false })
-
-attack1Button.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  if (!isAttacking) startAttack('attack1')
-}, { passive: false })
-
-attack2Button.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  if (!isAttacking) startAttack('attack2')
-}, { passive: false })
-
-attack3Button.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  if (!isAttacking) startAttack('attack3')
-}, { passive: false })
-
-pauseButton.addEventListener('touchstart', (e) => {
-  e.preventDefault()
-  togglePause()
-}, { passive: false })
-
-function isMobileDevice() {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-}
-if (isMobileDevice()) {
-  touchControls.style.display = 'flex'
-} else {
-  touchControls.style.display = 'none'
-}
 
 function worldToScreen(x, y) {
   return {
@@ -391,19 +189,23 @@ const cameraWidth = 2304
 const cameraHeight = 576
 let cameraX = 0
 let cameraY = 0
-const zoomLevel = 2
 
 function updateCamera() {
   const viewportWidth = 800
   const viewportHeight = 576
   const worldWidth = 2304
   const targetX = playerX + (hitboxWidth / 2) - (viewportWidth / 2)
-  const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 2)
   cameraX += (targetX - cameraX) * 0.1
-  cameraY += (targetY - cameraY) * 0.1
   cameraX = Math.max(0, Math.min(cameraX, worldWidth))
   const stageTop = currentStage * viewportHeight
-  cameraY = stageTop
+  const stageBottom = (currentStage * viewportHeight) + viewportHeight
+  const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 2)
+  cameraY = (targetY - cameraY) * 0.3
+  cameraY = Math.max(stageTop, cameraY)
+  if ((cameraY + cameraHeight) > stageBottom) {
+    cameraY = stageBottom - cameraHeight
+  }
+
   world.style.transform = `translate(${-cameraX}px, ${-cameraY}px)`
 }
 
@@ -440,14 +242,14 @@ const coinSpawnData = {
 
 let coins = []
 let score = 0
-
+//helper to create coins
 function createCoin(x, y) {
   const coinEl = document.createElement('div')
   coinEl.className = 'coin'
   gameContainer.appendChild(coinEl)
   return { el: coinEl, x, y, collected: false }
 }
-
+//create coins 
 function spawnCoinsForStage(stage) {
   const list = coinSpawnData[stage] || []
   list.forEach(({ x, y }) => {
@@ -455,10 +257,11 @@ function spawnCoinsForStage(stage) {
     coins.push(coin)
   })
 }
-
+//the check for parentNode is to avoid this error 
+//DOMException: Failed to execute 'removeChild' on 'Node'
 function removeCoinsForStage() {
   coins.forEach(c => {
-    if (!c.collected && c.el.parentNode) c.el.parentNode.removeChild(c.el)
+    if (c.el.parentNode) c.el.parentNode.removeChild(c.el)
   })
   coins = []
 }
@@ -512,7 +315,7 @@ gameContainer.appendChild(heartsContainer)
 function updateHealthUI() {
   healthFill.style.width = `${(playerHealth / playerMaxHealth) * 100}%`
   const hearts = heartsContainer.children
-  console.log(`updateHealthUI: playerHearts=${playerHearts}, hearts in DOM=${hearts.length}`);
+  //check if hearts are correct with hearts count maybe we can remove it 
   for (let i = 0; i < hearts.length; i++) {
     hearts[i].style.visibility = i < playerHearts ? 'visible' : 'hidden'
   }
@@ -560,9 +363,6 @@ let enemies = []
 let lastTimestamp = 0
 
 
-let playerHitboxEl
-let attackHitboxEl
-
 fetch('collisions.json')
   .then(response => response.ok ? response.json() : Promise.reject())
   .then(data => {
@@ -592,10 +392,7 @@ document.addEventListener('keyup', e => keysPressed[e.key] = false)
 function startAttack(attackType) {
   isAttacking = true
   setPlayerState(attackType)
-  const delay = attackType === 'attack3' ? 300 : 100
-  setTimeout(() => {
-    if (isAttacking) applyAttackDamage()
-  }, delay)
+  applyAttackDamage()
   player.addEventListener('animationend', () => {
     isAttacking = false
     updatePlayerState()
@@ -615,6 +412,7 @@ function applyAttackDamage() {
     const enemyHitbox = getEnemyHitbox(enemy)
     if (checkAABB(playerAttackHitbox, enemyHitbox)) {
       enemy.health -= 1
+      //remove enemy hit state
       enemy.el.classList.add('enemy-hit')
       setTimeout(() => enemy.el.classList.remove('enemy-hit'), 100)
       if (enemy.health <= 0) defeatEnemy(enemy)
@@ -627,6 +425,7 @@ function defeatEnemy(enemy) {
   enemy.el.classList.remove(`enemy-${enemy.type.name}`)
   enemy.el.classList.add('enemy-explosion')
   enemy.el.addEventListener('animationend', () => {
+    //check if remove and filter do the same thing 
     enemy.el.remove()
     enemies = enemies.filter(e => e !== enemy)
   }, { once: true })
@@ -645,6 +444,7 @@ function playerTakeDamage() {
       return
     } else {
       playerHealth = playerMaxHealth
+      updateHealthUI()
     }
   }
   updateHealthUI()
@@ -734,7 +534,6 @@ function pixelToTile(x, y) {
 function createEnemy(typeName, x, y) {
   const enemyData = enemyTypes.find(et => et.name === typeName)
   if (!enemyData) {
-    console.error("404 I guess, enemy type not found", typeName)
     return null
   }
   const enemyEl = document.createElement('div')
@@ -923,11 +722,11 @@ function handleVerticalCollisions() {
           playerHearts = Math.max(0, playerHearts - 1)
           updateHealthUI()
           if (playerHearts <= 0) {
-            // If no hearts are left, it's a full game over
-            defeatPlayer('game');
+            defeatPlayer('game')
           } else {
-            // Otherwise, it's just a stage restart
-            defeatPlayer('stage');
+            defeatPlayer('stage')
+            playerHealth = playerMaxHealth
+            updateHealthUI()
           }
           return
         }
@@ -963,7 +762,7 @@ function handleHorizontalCollisions() {
 
 function updatePlayerState() {
   if (isAttacking || isHit) return
-  const isMovingHorizontally = keysPressed['ArrowLeft'] || keysPressed['ArrowRight']
+  const isMovingHorizontally = keysPressed['q'] || keysPressed['d']
   if (velocityY < 0) setPlayerState('jump')
   else if (velocityY > 0 && !onGround) setPlayerState('fall')
   else if (isMovingHorizontally && onGround) setPlayerState('run')
@@ -1074,12 +873,11 @@ function gameLoop(timestamp) {
     if (lastTimestamp === 0) lastTimestamp = timestamp
     const deltaTime = timestamp - lastTimestamp
     lastTimestamp = timestamp
-    if (!isDefeated) { }
     prevX = playerX
     prevY = playerY
-    if (keysPressed['ArrowLeft']) { playerX -= speed, facingRight = false }
-    if (keysPressed['ArrowRight']) { playerX += speed, facingRight = true }
-    if (keysPressed['ArrowUp'] && onGround) { velocityY = jumpStrength, onGround = false }
+    if (keysPressed['q']) { playerX -= speed, facingRight = false }
+    if (keysPressed['d']) { playerX += speed, facingRight = true }
+    if ((keysPressed['z'] || keysPressed[' ']) && onGround) { velocityY = jumpStrength, onGround = false }
     if (!onGround) velocityY += gravity
     playerY += velocityY
     if (!isDefeated) {

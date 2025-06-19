@@ -393,8 +393,12 @@ let cameraX = 0
 let cameraY = 0
 
 function updateCamera() {
-  const viewportWidth = 800
-  const viewportHeight = 576
+  let viewportWidth = 800
+  let viewportHeight = 576
+  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+    viewportHeight = 300
+    viewportHeight = 250
+  }
   const worldWidth = 2304
   const targetX = playerX + (hitboxWidth / 2) - (viewportWidth / 2)
   cameraX += (targetX - cameraX) * 0.1

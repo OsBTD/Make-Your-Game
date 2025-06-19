@@ -400,13 +400,27 @@ function updateCamera() {
   cameraX += (targetX - cameraX) * 0.1
   cameraX = Math.max(0, Math.min(cameraX, worldWidth))
   const stageTop = currentStage * viewportHeight
-  const stageBottom = (currentStage * viewportHeight) + viewportHeight
-  const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 2)
-  cameraY = (targetY - cameraY)
-  cameraY = Math.max(stageTop, cameraY)
-  if ((cameraY + cameraHeight) > stageBottom) {
-    cameraY = stageBottom - cameraHeight
+  if (!isMobileDevice) {
+    const stageBottom = (currentStage * viewportHeight) + viewportHeight
+    const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 2)
+    cameraY += (targetY - cameraY)
+    cameraY = Math.max(stageTop, cameraY)
+    if ((cameraY + cameraHeight) > stageBottom) {
+      cameraY = stageBottom - cameraHeight
+    }
+
+  } else {
+    var Height = window.innerHeight
+    const stageBottom = (currentStage * viewportHeight) + viewportHeight
+    const targetY = playerY + (hitboxHeight / 2) - (Height / 2)
+    cameraY += (targetY - cameraY)
+    cameraY = Math.max(stageTop, cameraY)
+    if ((cameraY + cameraHeight) > stageBottom) {
+      cameraY = stageBottom - cameraHeight
+    }
+
   }
+
 
   world.style.transform = `translate(${-cameraX}px, ${-cameraY}px)`
 }

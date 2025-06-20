@@ -393,23 +393,26 @@ let cameraX = 0
 let cameraY = 0
 
 function updateCamera() {
-  let viewportWidth = 800
-  let viewportHeight = 576
-  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-    viewportHeight = 300
-    viewportHeight = 250
-  }
+  const viewportWidth = 800
+  const viewportHeight = 576
   const worldWidth = 2304
-  const targetX = playerX + (hitboxWidth / 2) - (viewportWidth / 2)
+  //target x is where the camera should be 
+  //so that the player is at the center of viewport
+  //multiplying by 0.1 slows its movement by frame
+  const targetX = playerX + (hitboxWidth / 2) - (viewportWidth / 3)
   cameraX += (targetX - cameraX) * 0.1
+  //we limit camera movement to 0 - worldwith 
   cameraX = Math.max(0, Math.min(cameraX, worldWidth))
+  //stage top/bottom is to limit vertical movement
+  //avoids showing parts from other stages
   const stageTop = currentStage * viewportHeight
-  const stageBottom = (currentStage * viewportHeight) + viewportHeight
-  const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 2)
-  cameraY += (targetY - cameraY)
+  const stageBottom = stageTop + viewportHeight
+  const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 10)
+  cameraY += (targetY - cameraY) * 0.3
   cameraY = Math.max(stageTop, cameraY)
-  if ((cameraY + cameraHeight) > stageBottom) {
-    cameraY = stageBottom - cameraHeight
+  //limit camera movement to stage top/bottom
+  if ((cameraY + viewportHeight) > stageBottom) {
+    cameraY = stageBottom - viewportHeight
   }
   world.style.transform = `translate(${-cameraX}px, ${-cameraY}px)`
 }

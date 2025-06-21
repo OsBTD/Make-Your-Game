@@ -6,8 +6,6 @@ body {
 }
 
 .game-container {
-    top: 0;
-    left: 0;
     width: 100vw;
     height: 576px;
     overflow: hidden;
@@ -15,8 +13,6 @@ body {
 }
 
 .camera {
-    top: 0;
-    left: 0;
     position: absolute;
     width: 100%;
     height: 100%;
@@ -25,8 +21,6 @@ body {
 }
 
 .world {
-    top: 0;
-    left: 0;
     position: absolute;
     width: 2304px;
     height: 2304px;
@@ -39,12 +33,10 @@ body {
 .player,
 .enemy {
     z-index: 2;
-    /* Above world background */
 }
 
 .hitbox {
     z-index: 3;
-    /* Above player/enemies for visibility */
 }
 
 .scoreboard,
@@ -52,7 +44,6 @@ body {
 .hearts,
 .debug-controls {
     z-index: 10;
-    /* Above everything */
 }
 
 .player,
@@ -77,15 +68,12 @@ body {
     position: absolute;
     width: 100%;
     height: 100%;
-    /* This should be dynamically set if map is larger than game-container */
     background-image: url('map.png');
     background-repeat: no-repeat;
     z-index: 0;
-    /* Map at the bottom */
     image-rendering: pixelated;
 }
 
-/* style.css */
 .pause-overlay {
     position: absolute;
     top: 0;
@@ -113,19 +101,15 @@ body {
 
 .scoreboard {
     position: absolute;
-    /* Added for positioning */
     top: 10px;
     left: 220px;
     color: white;
     background-color: black;
     font-family: Arial, sans-serif;
     z-index: 10;
-    /* Above everything */
 }
 
-/* Player Animation state frames - REMAINS UNCHANGED */
 .player.idle1 {
-    /* ... existing player styles ... */
     background-position-y: 0px;
     animation: anim_idle1 1.1s steps(22) infinite;
 }
@@ -247,14 +231,11 @@ body {
     }
 }
 
-/* --- NEW ENEMY STYLES --- */
 .enemy {
     position: absolute;
     image-rendering: pixelated;
     transform-origin: bottom center;
     z-index: 1;
-    /* Enemies between map and player */
-    /* Common background image, actual image should be 1664px wide, 320px tall */
     background-image: url('enemies.png');
     background-size: 1664px 384px;
     background-repeat: no-repeat;
@@ -264,7 +245,6 @@ body {
     width: 64px;
     height: 64px;
     background-position-y: 0px;
-    /* Row 1 */
     animation: anim_enemy_blueBall 2.0s steps(10) infinite;
 }
 
@@ -274,13 +254,11 @@ body {
     }
 }
 
-/* 10 frames * 64px */
 
 .enemy-greenRobot {
     width: 64px;
     height: 64px;
     background-position-y: -64px;
-    /* Row 2 */
     animation: anim_enemy_greenRobot 2.6s steps(26) infinite;
 }
 
@@ -290,13 +268,11 @@ body {
     }
 }
 
-/* 26 frames * 64px */
 
 .enemy-robotBall {
     width: 64px;
     height: 64px;
     background-position-y: -128px;
-    /* Row 3 */
     animation: anim_enemy_robotBall 2.4s steps(16) infinite;
 }
 
@@ -306,13 +282,11 @@ body {
     }
 }
 
-/* 16 frames * 64px */
 
 .enemy-greenSnail {
     width: 64px;
     height: 64px;
     background-position-y: -192px;
-    /* Row 4 */
     animation: anim_enemy_greenSnail 3.0s steps(10) infinite;
 }
 
@@ -322,13 +296,11 @@ body {
     }
 }
 
-/* 10 frames * 64px */
 
 .enemy-yellowBee {
     width: 64px;
     height: 64px;
     background-position-y: -256px;
-    /* Row 5 */
     animation: anim_enemy_yellowBee 1.56s steps(13) infinite;
 }
 
@@ -338,30 +310,23 @@ body {
     }
 }
 
-/* 13 frames * 64px */
 
 
 .enemy-hit {
     filter: contrast(150%) brightness(1.5);
     transition: all 0.1s;
 }
-
 .enemy-explosion {
-    width: 64px;
+    width:  64px;
     height: 64px;
     background-image: url('enemies.png');
     background-size: 1664px 384px;
-    background-position-y: -320px;
-    /* 5 * 64px */
+    background-position-y: -320px;     
     animation: anim_enemy_explosion 0.8s steps(12) 1 forwards;
 }
 
 @keyframes anim_enemy_explosion {
-
-    /* 12 frames × 64px = 768px */
-    to {
-        background-position-x: -768px;
-    }
+    to { background-position-x: -768px; }
 }
 
 .player-hit {
@@ -408,3 +373,4 @@ body {
     font-size: 24px;
     margin-right: 5px;
 }
+

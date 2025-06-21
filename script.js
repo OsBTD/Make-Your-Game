@@ -82,7 +82,11 @@ controlsLegend.textContent = `
 `
 pauseOverlay.appendChild(controlsLegend)
 gameContainer.appendChild(pauseOverlay)
-//the keys are reset to false on here be
+
+//the keys are reset to false on here
+//because on game loop when game is pause
+//we don't listen to keyup 
+//so if a key was pressed before pausing it stays active 
 function togglePause() {
   isPaused = !isPaused
   pauseOverlay.style.display = isPaused ? 'flex' : 'none'
@@ -175,6 +179,43 @@ document.getElementById('play-again-btn').addEventListener('click', () => {
   pauseOverlay.appendChild(controlsLegend)
 
 })
+
+function worldToScreen(x, y) {
+  return {
+    x: x - cameraX,
+    y: y - cameraY
+  }
+}
+
+const camera = document.querySelector('.camera')
+const world = document.querySelector('.world')
+let cameraX = 0
+let cameraY = 0
+
+function updateCamera() {
+  const viewportWidth = 800
+  const viewportHeight = 576
+  const worldWidth = 2304
+  //target x is where the camera should be 
+  //so that the player is at the center of viewport
+  //multiplying by 0.1 slows its movement by frame
+  const targetX = playerX + (hitboxWidth / 2) - (viewportWidth / 3)
+  cameraX += (targetX - cameraX) * 0.1
+  //we limit camera movement to 0 - worldwith 
+  cameraX = Math.max(0, Math.min(cameraX, worldWidth))
+  //stage top/bottom is to limit vertical movement
+  //avoids showing parts from other stages
+  const stageTop = currentStage * viewportHeight
+  const stageBottom = stageTop + viewportHeight
+  const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 3)
+  cameraY += (targetY - cameraY) * 0.3
+  cameraY = Math.max(stageTop, cameraY)
+  //limit camera movement to stage top/bottom
+  if ((cameraY + viewportHeight) > stageBottom) {
+    cameraY = stageBottom - viewportHeight
+  }
+  world.style.transform = `translate(${-cameraX}px, ${-cameraY}px)`
+}
 const touchControls = document.createElement('div')
 touchControls.className = 'touch-controls'
 Object.assign(touchControls.style, {
@@ -378,45 +419,6 @@ if (isMobileDevice()) {
   touchControls.style.display = 'none'
 }
 
-function worldToScreen(x, y) {
-  return {
-    x: x - cameraX,
-    y: y - cameraY
-  }
-}
-
-const camera = document.querySelector('.camera')
-const world = document.querySelector('.world')
-const cameraWidth = 2304
-const cameraHeight = 576
-let cameraX = 0
-let cameraY = 0
-
-function updateCamera() {
-  const viewportWidth = 800
-  const viewportHeight = 576
-  const worldWidth = 2304
-  //target x is where the camera should be 
-  //so that the player is at the center of viewport
-  //multiplying by 0.1 slows its movement by frame
-  const targetX = playerX + (hitboxWidth / 2) - (viewportWidth / 3)
-  cameraX += (targetX - cameraX) * 0.1
-  //we limit camera movement to 0 - worldwith 
-  cameraX = Math.max(0, Math.min(cameraX, worldWidth))
-  //stage top/bottom is to limit vertical movement
-  //avoids showing parts from other stages
-  const stageTop = currentStage * viewportHeight
-  const stageBottom = stageTop + viewportHeight
-  const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 10)
-  cameraY += (targetY - cameraY) * 0.3
-  cameraY = Math.max(stageTop, cameraY)
-  //limit camera movement to stage top/bottom
-  if ((cameraY + viewportHeight) > stageBottom) {
-    cameraY = stageBottom - viewportHeight
-  }
-  world.style.transform = `translate(${-cameraX}px, ${-cameraY}px)`
-}
-
 const coinSpawnData = {
   0: [
     { x: 300, y: 80 }, { x: 320, y: 75 }, { x: 340, y: 80 },
@@ -474,6 +476,7 @@ function removeCoinsForStage() {
   coins = []
 }
 
+//check coin player collisions
 function drawCoins() {
   coins.forEach(coin => {
     if (coin.collected) return
@@ -693,7 +696,6 @@ function defeatPlayer(restartType) {
     if (playerState === 'ko') {
       isDefeated = false
       if (restartType === 'game') {
-        playerHearts = 3
         restartGame()
       } else {
         restartStage()
@@ -710,8 +712,8 @@ function getEnemyHitbox(enemy) {
   const type = enemy.type
   const spriteW = type.spriteWidth || 64
   const spriteH = type.spriteHeight || 64
-  const hbxW = type.hitboxWidth || spriteW * 0.7
-  const hbxH = type.hitboxHeight || spriteH * 0.9
+  const hbxW = type.hitboxWidth || spriteW
+  const hbxH = type.hitboxHeight || spriteH
   const hitboxOffsetX = (spriteW - hbxW) / 2
   const hitboxOffsetY = spriteH - hbxH
   return {
@@ -766,8 +768,8 @@ function createEnemy(typeName, x, y) {
     defeated: false
   }
   if (enemy.type.type === 'fly') {
-    enemy.flyAmplitude = enemyData.flyAmplitude !== undefined ? enemyData.flyAmplitude : (15 + Math.random() * 20)
-    enemy.flyFrequency = enemyData.flyFrequency !== undefined ? enemyData.flyFrequency : (0.002 + Math.random() * 0.0015)
+    enemy.flyAmplitude = enemyData.flyAmplitude !== undefined ? enemyData.flyAmplitude : 20
+    enemy.flyFrequency = enemyData.flyFrequency !== undefined ? enemyData.flyFrequency : 0.003
   }
   return enemy
 }
@@ -970,7 +972,7 @@ function handleHorizontalCollisions() {
 
 function updatePlayerState() {
   if (isAttacking || isHit) return
-  const isMovingHorizontally = keysPressed['q'] || keysPressed['d']
+  const isMovingHorizontally = keysPressed['q'] || keysPressed['d'] || keysPressed['Q'] || keysPressed['D']
   if (velocityY < 0) setPlayerState('jump')
   else if (velocityY > 0 && !onGround) setPlayerState('fall')
   else if (isMovingHorizontally && onGround) setPlayerState('run')
@@ -1054,7 +1056,6 @@ function spawnEnemiesForStage(stage) {
       enemies.push(enemy)
       spawnData.active = true
       spawnData.enemyRef = enemy
-      console.log(`Spawned ${spawnData.type} at x:${spawnData.x}, y:${spawnData.y} for stage ${stage}`)
     }
   })
 }
@@ -1083,9 +1084,9 @@ function gameLoop(timestamp) {
     lastTimestamp = timestamp
     prevX = playerX
     prevY = playerY
-    if (keysPressed['q']) { playerX -= speed, facingRight = false }
-    if (keysPressed['d']) { playerX += speed, facingRight = true }
-    if ((keysPressed['z'] || keysPressed[' ']) && onGround) { velocityY = jumpStrength, onGround = false }
+    if (keysPressed['q'] || keysPressed['Q']) { playerX -= speed, facingRight = false }
+    if (keysPressed['d'] || keysPressed['D']) { playerX += speed, facingRight = true }
+    if ((keysPressed['z'] || keysPressed['Z'] || keysPressed[' ']) && onGround) { velocityY = jumpStrength, onGround = false }
     if (!onGround) velocityY += gravity
     playerY += velocityY
     if (!isDefeated) {

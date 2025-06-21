@@ -199,7 +199,7 @@ function updateCamera() {
   //target x is where the camera should be 
   //so that the player is at the center of viewport
   //multiplying by 0.1 slows its movement by frame
-  const targetX = playerX + (hitboxWidth / 2) - (viewportWidth / 3)
+  const targetX = playerX + (hitboxWidth / 2) - (viewportWidth / 5)
   cameraX += (targetX - cameraX) * 0.1
   //we limit camera movement to 0 - worldwith 
   cameraX = Math.max(0, Math.min(cameraX, worldWidth))

@@ -203,17 +203,23 @@ function updateCamera() {
   cameraX += (targetX - cameraX) * 0.1
   //we limit camera movement to 0 - worldwith 
   cameraX = Math.max(0, Math.min(cameraX, worldWidth))
+  //afterwards we need to fix vertical camera movement now it doesn't move 
+  const stageTop = currentStage * viewportHeight
+  cameraY = stageTop
+  //vertical camera movement is not working here 
   //stage top/bottom is to limit vertical movement
   //avoids showing parts from other stages
-  const stageTop = currentStage * viewportHeight
-  const stageBottom = stageTop + viewportHeight
-  const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 3)
-  cameraY += (targetY - cameraY) * 0.3
-  cameraY = Math.max(stageTop, cameraY)
-  //limit camera movement to stage top/bottom
-  if ((cameraY + viewportHeight) > stageBottom) {
-    cameraY = stageBottom - viewportHeight
-  }
+  // const stageTop = currentStage * viewportHeight
+  // const stageBottom = stageTop + viewportHeight
+  // const targetY = playerY + (hitboxHeight / 2) - (viewportHeight / 50)
+  // cameraY += (targetY - cameraY) * 0.3
+  // cameraY = Math.max(stageTop, cameraY)
+
+  // if (cameraY < stageTop) {
+  //   cameraY = stageTop
+  // } else if ((cameraY + viewportHeight) > stageBottom) {
+  //   cameraY = stageBottom - viewportHeight
+  // }
   world.style.transform = `translate(${-cameraX}px, ${-cameraY}px)`
 }
 const touchControls = document.createElement('div')
